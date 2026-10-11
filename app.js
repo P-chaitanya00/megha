@@ -29,8 +29,30 @@ const PRODUCTS = [
     image: 'assets/products/golden_heart_necklace.jpg',
     description: 'Bespoke 18K gold-plated anti-tarnish heart pendant crafted on a sleek snake chain. Waterproof, sweatproof, and packaged with handwritten Gnapakalu by Megha card.',
     tags: ['18K Gold', 'Heart Pendant', 'Anti-Tarnish', 'Waterproof']
+  },
+  {
+    id: 'bamboo_joint_bangle',
+    name: 'Stainless Steel Bamboo Segment Joint Bangle',
+    category: 'Antitarnish jewellery',
+    gender: 'w',
+    offerPrice: 349,
+    originalPrice: 549, // 349 + 200 rule
+    badge: 'Stainless Steel',
+    image: 'assets/products/bamboo_bangle_black.jpg',
+    description: 'Minimalist luxury bamboo segment joint bangle crafted in anti-tarnish waterproof stainless steel. Features a secure push clasp mechanism. Available in Jet Black, Rich Gold, and Ivory White.',
+    tags: ['Stainless Steel', 'Bamboo Bangle', 'Waterproof', 'Color Variants'],
+    variants: [
+      { name: 'Black', color: '#1a1a1a', image: 'assets/products/bamboo_bangle_black.jpg' },
+      { name: 'Gold', color: '#d4af37', image: 'assets/products/bamboo_bangle_gold.jpg' },
+      { name: 'White', color: '#ffffff', image: 'assets/products/bamboo_bangle_white.jpg' }
+    ]
   }
 ];
+
+// Active color selection state mapped by product ID
+const selectedProductVariants = {
+  bamboo_joint_bangle: { name: 'Black', color: '#1a1a1a', image: 'assets/products/bamboo_bangle_black.jpg' }
+};
 
 // STATE MANAGEMENT
 let currentScreen = 'home';      // 'home' | 'catalog'
@@ -371,11 +393,30 @@ function renderProducts() {
     const isWishlisted = wishlist.includes(item.id);
     const savings = item.originalPrice - item.offerPrice;
     const discountPercent = Math.round((savings / item.originalPrice) * 100);
+    const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
+    const currentImg = activeVariant ? activeVariant.image : item.image;
+
+    const variantSwatchesHtml = item.variants ? `
+      <div class="product-color-picker">
+        <span class="color-picker-label">Color:</span>
+        ${item.variants.map((v, idx) => {
+          const isSelected = activeVariant && activeVariant.name === v.name;
+          return `
+            <button type="button" class="color-swatch-btn ${isSelected ? 'active' : ''}" 
+                    onclick="selectProductColor('${item.id}', '${v.name}')" 
+                    title="${v.name}">
+              <span class="color-circle" style="background-color: ${v.color};"></span>
+              <span>${v.name}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
 
     return `
-      <div class="product-card">
+      <div class="product-card" id="card-${item.id}">
         <div class="product-image-container">
-          <img src="${item.image}" alt="${item.name}" class="product-img" loading="lazy" />
+          <img src="${currentImg}" alt="${item.name}" id="img-${item.id}" class="product-img" loading="lazy" />
           
           <div class="card-badges">
             <span class="badge-tag-discount">${discountPercent}% OFF</span>
@@ -403,6 +444,7 @@ function renderProducts() {
             </div>
             
             <h3 class="product-title">${item.name}</h3>
+            ${variantSwatchesHtml}
           </div>
 
           <div class="product-pricing-row">
@@ -427,6 +469,26 @@ function renderProducts() {
       </div>
     `;
   }).join('');
+}
+
+// Color variant switch handler
+function selectProductColor(productId, colorName) {
+  const item = PRODUCTS.find(p => p.id === productId);
+  if (!item || !item.variants) return;
+  const variant = item.variants.find(v => v.name === colorName);
+  if (!variant) return;
+
+  selectedProductVariants[productId] = variant;
+  renderProducts();
+
+  // If quickview is open for this product, sync it too
+  const quickViewImg = document.getElementById('quickViewMainImg');
+  if (quickViewImg) {
+    quickViewImg.src = variant.image;
+    document.querySelectorAll('.qv-color-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.color === colorName);
+    });
+  }
 }
 
 // ===============================================================
@@ -503,27 +565,34 @@ function handleDrawerCategoryClick(catKey) {
 // ===============================================================
 // CART & CHECKOUT
 // ===============================================================
-function addToCart(productId, qty = 1) {
+function addToCart(productId, qty = 1, chosenVariant = null) {
   const product = PRODUCTS.find(p => p.id === productId);
   if (!product) return;
 
-  const existingIndex = cart.findIndex(item => item.id === productId);
+  const variant = chosenVariant || (product.variants ? (selectedProductVariants[productId] || product.variants[0]) : null);
+  const cartItemId = variant ? `${product.id}_${variant.name.toLowerCase()}` : product.id;
+  const displayName = variant ? `${product.name} (${variant.name})` : product.name;
+  const displayImg = variant ? variant.image : product.image;
+
+  const existingIndex = cart.findIndex(item => item.id === cartItemId);
   if (existingIndex > -1) {
     cart[existingIndex].qty += qty;
   } else {
     cart.push({
-      id: product.id,
-      name: product.name,
+      id: cartItemId,
+      productId: product.id,
+      name: displayName,
+      variantName: variant ? variant.name : null,
       category: product.category,
       price: product.offerPrice,
-      image: product.image,
+      image: displayImg,
       qty: qty
     });
   }
 
   saveCart();
   updateCartUI();
-  showToast(`Added to Bag: ${product.name}`);
+  showToast(`Added to Bag: ${displayName}`);
   openCart();
 }
 
@@ -712,10 +781,34 @@ function openQuickView(productId) {
   const savings = item.originalPrice - item.offerPrice;
   const discountPercent = Math.round((savings / item.originalPrice) * 100);
 
+  const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
+  const currentImg = activeVariant ? activeVariant.image : item.image;
+
+  const variantPickerHtml = item.variants ? `
+    <div style="margin: 1rem 0;">
+      <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-text-main); display: block; margin-bottom: 0.4rem;">
+        Select Color: <span id="qvSelectedColorName" style="color: var(--color-primary-dark);">${activeVariant.name}</span>
+      </span>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        ${item.variants.map(v => {
+          const isSelected = activeVariant && activeVariant.name === v.name;
+          return `
+            <button type="button" class="color-swatch-btn qv-color-btn ${isSelected ? 'active' : ''}" 
+                    data-color="${v.name}"
+                    onclick="selectProductColor('${item.id}', '${v.name}')">
+              <span class="color-circle" style="background-color: ${v.color};"></span>
+              <span>${v.name}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
   content.innerHTML = `
     <div class="quickview-content">
       <div>
-        <img src="${item.image}" alt="${item.name}" class="quickview-img">
+        <img src="${currentImg}" alt="${item.name}" id="quickViewMainImg" class="quickview-img">
       </div>
       <div class="quickview-details">
         <span class="gender-pill" style="margin-bottom: 0.5rem; display: inline-block;">${item.category} • ${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
@@ -731,13 +824,15 @@ function openQuickView(productId) {
           </div>
         </div>
 
+        ${variantPickerHtml}
+
         <p class="quickview-desc">${item.description}</p>
 
         <ul class="quickview-spec-list">
           <li><strong>Crafted By:</strong> Gnapakalu by Megha</li>
-          <li><strong>Collection:</strong> ${item.gender === 'both' ? 'Women & Men (Unisex)' : item.gender === 'w' ? 'Women Collection' : 'Men Collection'}</li>
-          <li><strong>Packaging:</strong> Premium Gift Wrap & Handwritten Card Included</li>
-          <li><strong>Anti-Tarnish Guarantee:</strong> 100% Waterproof & Nickel-Free</li>
+          <li><strong>Material:</strong> 100% Waterproof Stainless Steel / Anti-Tarnish PVD</li>
+          <li><strong>Packaging:</strong> Premium Velvet Gift Case & Handwritten Card</li>
+          <li><strong>Guarantee:</strong> Zero Blackening, Zero Skin Irritation</li>
         </ul>
 
         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem;">

@@ -1142,8 +1142,59 @@ a {
   font-weight: 600;
   line-height: 1.35;
   color: var(--color-text-main);
-  margin-bottom: 0.75rem;
-  min-height: 2.8em;
+  margin-bottom: 0.5rem;
+}
+
+.product-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.color-picker-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-right: 0.2rem;
+}
+
+.color-swatch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  background: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-swatch-btn:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.color-swatch-btn.active {
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.color-circle {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .product-pricing-row {
