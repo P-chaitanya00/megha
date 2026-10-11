@@ -153,29 +153,29 @@ function saveProducts() {
 }
 
 // ===============================================================
-// CLOUD PRODUCT SYNCHRONIZATION ENGINE (REAL-TIME CROSS-DEVICE)
-// Synchronizes all added, edited, and stock-updated products across all devices
+// CLOUD STORE SYNCHRONIZATION ENGINE (REAL-TIME CROSS-DEVICE)
+// Synchronizes Products, Customer Orders & Owner PIN across all devices
 // ===============================================================
 const CLOUD_SYNC_API = '/api/sync-products';
 const CLOUD_GIST_URL = 'https://api.github.com/gists/76c5b055af394e1a6b4e7f6b75f34ed4';
-let isSyncingProducts = false;
+let isSyncingStore = false;
 
-async function syncProductsFromCloud(isUserInitiated = false) {
-  if (isSyncingProducts) return;
-  isSyncingProducts = true;
+async function syncStoreFromCloud(isUserInitiated = false) {
+  if (isSyncingStore) return;
+  isSyncingStore = true;
   try {
     const badge = document.getElementById('mgmtSyncStatusBadge');
-    if (badge && isUserInitiated) badge.textContent = '🔄 Syncing...';
+    if (badge && isUserInitiated) badge.textContent = '🔄 Syncing cloud...';
 
-    let cloudProducts = null;
+    let cloudData = null;
 
-    // 1. Try Vercel Serverless Function first
+    // 1. Try Vercel Serverless Function first (Returns { success: true, products: [...], orders: [...], pin: "..." })
     try {
       const res = await fetch(CLOUD_SYNC_API + '?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.products) && json.products.length > 0) {
-          cloudProducts = json.products;
+        if (json.success) {
+          cloudData = json;
         }
       }
     } catch (e) {
@@ -183,55 +183,110 @@ async function syncProductsFromCloud(isUserInitiated = false) {
     }
 
     // 2. Direct GitHub Gist fallback
-    if (!cloudProducts) {
+    if (!cloudData) {
       try {
         const gRes = await fetch(CLOUD_GIST_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (gRes.ok) {
           const gData = await gRes.json();
-          const fileContent = gData.files && gData.files['gnapakalu_products.json'] && gData.files['gnapakalu_products.json'].content;
-          if (fileContent) {
-            const parsed = JSON.parse(fileContent);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              cloudProducts = parsed;
-            }
-          }
+          const files = gData.files || {};
+          let p = [], o = [], s = { pin: '1234' };
+          try { if (files['gnapakalu_products.json']?.content) p = JSON.parse(files['gnapakalu_products.json'].content); } catch (e) {}
+          try { if (files['gnapakalu_orders.json']?.content) o = JSON.parse(files['gnapakalu_orders.json'].content); } catch (e) {}
+          try { if (files['gnapakalu_settings.json']?.content) s = JSON.parse(files['gnapakalu_settings.json'].content); } catch (e) {}
+          cloudData = {
+            products: p,
+            orders: o,
+            pin: s.pin || '1234'
+          };
         }
       } catch (ge) {
-        console.warn('Gist direct sync error:', ge);
+        console.warn('Gist direct sync fallback error:', ge);
       }
     }
 
-    if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
-      // Ensure all items have valid numbers & categories registered
-      cloudProducts.forEach(p => {
-        if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
-        if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
-          ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+    if (cloudData) {
+      // --- A. SYNC PRODUCTS & INVENTORY ---
+      if (Array.isArray(cloudData.products) && cloudData.products.length > 0) {
+        cloudData.products.forEach(p => {
+          if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
+          if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
+            ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+          }
+        });
+        PRODUCTS = cloudData.products;
+        localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+
+        renderProducts();
+        renderDrawerCategories();
+        renderSubcategoryFilterChips();
+        updateMgmtLiveBadge();
+        if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
+          renderMgmtProductsTable();
         }
+      }
+
+      // --- B. SYNC & MERGE CUSTOMER ORDERS ---
+      let localOrders = [];
+      try {
+        localOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+      } catch (e) { localOrders = []; }
+
+      const cloudOrders = Array.isArray(cloudData.orders) ? cloudData.orders : [];
+      
+      // Merge unique orders by orderId (keep most recent orders first)
+      const orderMap = new Map();
+      // Add local orders first (preserving laptop's 4 existing orders)
+      localOrders.forEach(ord => {
+        if (ord && ord.orderId) orderMap.set(ord.orderId, ord);
+      });
+      // Add or update with cloud orders
+      cloudOrders.forEach(ord => {
+        if (ord && ord.orderId) orderMap.set(ord.orderId, ord);
       });
 
-      // Update in-memory state & localStorage cache
-      PRODUCTS = cloudProducts;
-      localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+      const mergedOrders = Array.from(orderMap.values());
+      // Sort orders descending by order date/id
+      mergedOrders.sort((a, b) => {
+        const timeA = new Date(a.orderDate).getTime() || 0;
+        const timeB = new Date(b.orderDate).getTime() || 0;
+        return timeB - timeA;
+      });
 
-      // Re-render UI across the application
-      renderProducts();
-      renderDrawerCategories();
-      renderSubcategoryFilterChips();
-      updateMgmtLiveBadge();
+      localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(mergedOrders));
+      if (typeof updateMgmtOrdersCount === 'function') updateMgmtOrdersCount();
       if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
-        renderMgmtProductsTable();
+        const ordersTab = document.getElementById('mgmtTabContentOrders');
+        if (ordersTab && ordersTab.style.display !== 'none' && typeof renderMgmtOrdersTable === 'function') {
+          renderMgmtOrdersTable();
+        }
+      }
+
+      // If local orders had orders not yet in the cloud, push merged list back to cloud
+      if (mergedOrders.length > cloudOrders.length) {
+        console.log(`Pushing ${mergedOrders.length - cloudOrders.length} local un-synced orders to cloud...`);
+        syncOrdersToCloud(mergedOrders);
+      }
+
+      // --- C. SYNC OWNER ACCESS PIN ---
+      if (cloudData.pin && typeof cloudData.pin === 'string' && cloudData.pin.trim().length >= 4) {
+        currentMgmtPin = cloudData.pin.trim();
+        localStorage.setItem('gnapakalu_mgmt_pin', currentMgmtPin);
       }
 
       if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
-      if (isUserInitiated) showToast(`Synced ${PRODUCTS.length} live products from cloud! ☁️`);
-      console.log('✅ Synchronized', PRODUCTS.length, 'live products from cloud across devices.');
+      if (isUserInitiated) showToast(`Synced all products, orders, and PIN from cloud! ☁️`);
+      console.log('✅ Universal Cloud Sync Complete: Products:', PRODUCTS.length, 'Orders:', mergedOrders.length, 'PIN:', currentMgmtPin);
     }
   } catch (err) {
-    console.warn('syncProductsFromCloud exception:', err);
+    console.warn('syncStoreFromCloud exception:', err);
   } finally {
-    isSyncingProducts = false;
+    isSyncingStore = false;
   }
+}
+
+// Backwards-compatible alias
+async function syncProductsFromCloud(isUserInitiated = false) {
+  return syncStoreFromCloud(isUserInitiated);
 }
 
 async function syncProductsToCloud(productsList) {
@@ -239,7 +294,6 @@ async function syncProductsToCloud(productsList) {
     const badge = document.getElementById('mgmtSyncStatusBadge');
     if (badge) badge.textContent = '☁️ Syncing across all devices...';
 
-    // 1. Send to serverless API
     const res = await fetch(CLOUD_SYNC_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -249,12 +303,42 @@ async function syncProductsToCloud(productsList) {
     if (res.ok) {
       if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
       console.log('✅ Products synced to cloud successfully.');
-    } else {
-      console.warn('Serverless sync error status:', res.status);
     }
   } catch (err) {
     console.error('Failed to sync products to cloud:', err);
   }
+}
+
+async function syncOrdersToCloud(ordersList) {
+  try {
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: ordersList })
+    });
+    if (res.ok) {
+      console.log('✅ Orders synced to cloud successfully across all devices.');
+    }
+  } catch (err) {
+    console.error('Failed to sync orders to cloud:', err);
+  }
+}
+
+async function syncPinToCloud(newPin) {
+  try {
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: newPin })
+    });
+    if (res.ok) {
+      console.log('✅ Owner PIN synced to cloud successfully across all devices.');
+      return true;
+    }
+  } catch (err) {
+    console.error('Failed to sync PIN to cloud:', err);
+  }
+  return false;
 }
 
 // Active color selection state mapped by product ID
@@ -1760,12 +1844,14 @@ function submitCustomerOrder(event) {
     }));
   } catch (e) {}
 
-  // 5. Persist Order in LocalStorage for Store Owner Tracking
+  // 5. Persist Order in LocalStorage & Instantly Sync to Cloud across all devices
   try {
     let allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
     allOrders.unshift(orderPayload);
     localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
     if (typeof updateMgmtOrdersCount === 'function') updateMgmtOrdersCount();
+    // Real-time Cloud Sync for Orders so all other devices see this order immediately
+    syncOrdersToCloud(allOrders);
   } catch (errStorage) {
     console.warn('Storage warning for orders:', errStorage);
   }
@@ -1914,11 +2000,11 @@ let mgmtUploadedImageDataUrl = '';
 // Synchronize PIN with Cloud so changes reflect immediately across all devices
 async function syncPinFromCloud() {
   try {
-    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${CLOUD_KV_APP_KEY}/${CLOUD_PIN_KEY}`);
+    const res = await fetch(CLOUD_SYNC_API + '?t=' + Date.now(), { cache: 'no-store' });
     if (res.ok) {
-      const cloudPin = await res.json();
-      if (cloudPin && typeof cloudPin === 'string' && cloudPin.trim()) {
-        currentMgmtPin = cloudPin.trim();
+      const data = await res.json();
+      if (data && data.pin && typeof data.pin === 'string' && data.pin.trim().length >= 4) {
+        currentMgmtPin = data.pin.trim();
         localStorage.setItem('gnapakalu_mgmt_pin', currentMgmtPin);
       }
     }
@@ -1928,12 +2014,12 @@ async function syncPinFromCloud() {
 }
 
 // MANAGEMENT PORTAL ENTRY POINT
-function openManagementPortal() {
-  syncProductsFromCloud();
+async function openManagementPortal() {
+  // Sync products, orders, and owner PIN immediately before prompting
+  syncStoreFromCloud();
   if (isOwnerAuthenticated) {
     showPortalModal();
   } else {
-    syncPinFromCloud();
     openPinModal();
   }
 }
@@ -1976,10 +2062,20 @@ async function verifyManagementPin(e) {
   e.preventDefault();
   const input = document.getElementById('mgmtPinInput');
   const errorMsg = document.getElementById('mgmtPinErrorMsg');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
   const enteredPin = input ? input.value.trim() : '';
 
-  // Double-check with cloud to make sure we have the latest PIN from other devices
-  await syncPinFromCloud();
+  if (submitBtn) submitBtn.innerHTML = '<span>Verifying...</span>';
+
+  // Double-check with cloud to ensure we compare with latest PIN changed from other devices
+  try {
+    await syncStoreFromCloud();
+  } catch (errSync) {
+    console.warn('PIN pre-verification sync note:', errSync);
+  } finally {
+    if (submitBtn) submitBtn.innerHTML = originalBtnText;
+  }
 
   if (enteredPin === currentMgmtPin) {
     isOwnerAuthenticated = true;
@@ -1988,7 +2084,7 @@ async function verifyManagementPin(e) {
     showToast('Authenticated! Welcome to Store Management');
   } else {
     if (errorMsg) {
-      errorMsg.textContent = 'Incorrect PIN. Please try again.';
+      errorMsg.textContent = 'Incorrect PIN. Please enter your valid 4-digit Management PIN.';
       errorMsg.style.display = 'block';
     }
     if (input) {
@@ -2059,20 +2155,18 @@ async function handleChangePinSubmit(e) {
   currentMgmtPin = next;
   localStorage.setItem('gnapakalu_mgmt_pin', currentMgmtPin);
 
-  // Sync to Cloud KV so all other devices can access with the new PIN
-  if (submitBtn) submitBtn.textContent = 'Syncing...';
+  // Sync to Cloud so all other devices immediately require the new PIN
+  if (submitBtn) submitBtn.textContent = 'Syncing to Cloud...';
   try {
-    await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_KV_APP_KEY}/${CLOUD_PIN_KEY}/${encodeURIComponent(currentMgmtPin)}`, {
-      method: 'POST'
-    });
+    await syncPinToCloud(currentMgmtPin);
   } catch (err) {
-    console.warn('Cloud sync warning:', err);
+    console.warn('Cloud PIN sync warning:', err);
   } finally {
     if (submitBtn) submitBtn.textContent = 'Save & Sync PIN';
   }
 
   closeChangePinModal();
-  showToast(`Access PIN updated to ${currentMgmtPin} and synced live across devices! 🔐`);
+  showToast(`Access PIN updated to ${currentMgmtPin} and synced live across all devices! 🔐`);
 }
 
 // SHOW MANAGEMENT PORTAL DASHBOARD
