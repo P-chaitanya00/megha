@@ -1268,20 +1268,11 @@ function selectPaymentApp(appName, cardId) {
   const utrReqStar = document.getElementById('utrReqStar');
   const utrInput = document.getElementById('custUtrNumber');
 
-  if (appName === 'Cash on Delivery (COD)') {
-    if (qrShowcase) qrShowcase.style.display = 'none';
-    if (utrReqStar) utrReqStar.style.display = 'none';
-    if (utrInput) {
-      utrInput.placeholder = 'Optional for COD orders';
-      utrInput.removeAttribute('required');
-    }
-  } else {
-    if (qrShowcase) qrShowcase.style.display = 'block';
-    if (utrReqStar) utrReqStar.style.display = 'inline';
-    if (utrInput) {
-      utrInput.placeholder = 'e.g. 329182749102 (12 digits)';
-      utrInput.setAttribute('required', 'true');
-    }
+  if (qrShowcase) qrShowcase.style.display = 'block';
+  if (utrReqStar) utrReqStar.style.display = 'inline';
+  if (utrInput) {
+    utrInput.placeholder = 'e.g. 329182749102 (12 digits)';
+    utrInput.setAttribute('required', 'true');
   }
 }
 
@@ -1412,7 +1403,7 @@ function submitCustomerOrder(event) {
   const utrNumber = rawUtr.trim().replace(/\s+/g, '');
   const transactionId = (document.getElementById('custTransactionId')?.value || '').trim();
 
-  if (selectedPaymentApp !== 'Cash on Delivery (COD)' && (!utrNumber || utrNumber.length < 6)) {
+  if (!utrNumber || utrNumber.length < 6) {
     showToast('⚠️ Please scan the QR, complete payment & enter the 12-digit UTR number');
     const utrEl = document.getElementById('custUtrNumber');
     if (utrEl) {
@@ -1493,8 +1484,8 @@ function submitCustomerOrder(event) {
     grandTotal: grandTotal,
     grandTotalFormatted: formatINR(grandTotal),
     paymentApp: selectedPaymentApp,
-    utrNumber: utrNumber || (selectedPaymentApp === 'Cash on Delivery (COD)' ? 'COD / Cash' : 'N/A'),
-    transactionId: transactionId || utrNumber || 'N/A',
+    utrNumber: utrNumber,
+    transactionId: transactionId || utrNumber,
     paymentStatus: 'Payment Completed / Order Placed'
   };
 
