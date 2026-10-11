@@ -921,6 +921,7 @@ function updateCartUI() {
 }
 
 function openCart() {
+  updateCartUI();
   const drawer = document.getElementById('cartDrawer');
   const overlay = document.getElementById('cartOverlay');
   if (drawer) {

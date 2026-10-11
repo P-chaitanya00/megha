@@ -333,12 +333,24 @@ a {
   border: 1px solid var(--color-border);
   transition: var(--transition-fast);
   box-shadow: 0 2px 6px var(--color-shadow);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.icon-btn * {
+  pointer-events: none;
 }
 
 .icon-btn:hover {
   color: var(--color-primary-dark);
   border-color: var(--color-primary-light);
   transform: translateY(-2px);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
 }
 
 .badge-count {
