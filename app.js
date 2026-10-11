@@ -1404,13 +1404,15 @@ function submitCustomerOrder(event) {
   }
 
   const name = document.getElementById('custName')?.value.trim();
-  const phone = document.getElementById('custPhone')?.value.trim();
+  const rawPhone = document.getElementById('custPhone')?.value || '';
+  const phone = rawPhone.replace(/\D/g, '').slice(-10);
   const houseNo = document.getElementById('custHouseNo')?.value.trim();
   const address = document.getElementById('custAddress')?.value.trim();
   const landmark = document.getElementById('custLandmark')?.value.trim();
   const state = document.getElementById('custState')?.value.trim();
-  const pincode = document.getElementById('custPincode')?.value.trim();
-  const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'Google Pay (GPay)';
+  const rawPincode = document.getElementById('custPincode')?.value || '';
+  const pincode = rawPincode.replace(/\D/g, '').slice(0, 6);
+  const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'PhonePe';
 
   // Validations
   if (!name || name.length < 2) {
@@ -1418,7 +1420,7 @@ function submitCustomerOrder(event) {
     document.getElementById('custName')?.focus();
     return;
   }
-  if (!phone || !/^\d{10}$/.test(phone)) {
+  if (!phone || phone.length !== 10) {
     showToast('Please enter a valid 10-digit mobile number');
     document.getElementById('custPhone')?.focus();
     return;
@@ -1438,7 +1440,7 @@ function submitCustomerOrder(event) {
     document.getElementById('custLandmark')?.focus();
     return;
   }
-  if (!pincode || !/^\d{6}$/.test(pincode)) {
+  if (!pincode || pincode.length !== 6) {
     showToast('Please enter a valid 6-digit Pincode');
     document.getElementById('custPincode')?.focus();
     return;
@@ -1454,7 +1456,7 @@ function submitCustomerOrder(event) {
   const transactionId = (document.getElementById('custTransactionId')?.value || '').trim();
 
   if (!utrNumber || utrNumber.length < 6) {
-    showToast('⚠️ Please scan the QR, complete payment & enter the 12-digit UTR number');
+    showToast('⚠️ Please enter your 12-digit Payment UTR / UPI Ref from PhonePe / GPay');
     const utrEl = document.getElementById('custUtrNumber');
     if (utrEl) {
       utrEl.focus();
@@ -1466,7 +1468,6 @@ function submitCustomerOrder(event) {
         utrEl.style.boxShadow = '';
       }, 4000);
     }
-    return;
   }
 
   // Calculate final shipping strictly via backend pincode checker
@@ -1582,78 +1583,87 @@ function submitCustomerOrder(event) {
     `Please confirm the order and dispatch details.`
   );
 
-  // Render Order Placed modal
-  const content = document.getElementById('quickViewContent');
-  if (content) {
-    content.innerHTML = `
-      <div style="padding: 2.25rem 1.5rem; text-align: center;">
-        <div style="width: 70px; height: 70px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 2.2rem; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.2);">
-          ✓
-        </div>
-        <h2 style="font-family: var(--font-serif); font-size: 1.85rem; margin-bottom: 0.35rem; color: var(--color-text-main);">Order Placed Successfully!</h2>
-        <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
-          Thank you <strong>${name}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.
-        </p>
-        
-        <div style="background: var(--color-bg); padding: 1.25rem; border-radius: var(--radius-md); max-width: 440px; margin: 0 auto 1.5rem; text-align: left; font-size: 0.88rem; border: 1px solid var(--color-border);">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Order ID:</span>
-            <strong style="color: var(--color-primary-dark);">#GNAP-${orderNum}</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Contact:</span>
-            <strong>+91 ${phone}</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Payment App Used:</span>
-            <span class="mgmt-pay-app-pill">${selectedPaymentApp}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Payment UTR / Ref No:</span>
-            <strong style="font-family: monospace; color: var(--color-primary-dark);">${orderPayload.utrNumber}</strong>
-          </div>
-          ${orderPayload.transactionId && orderPayload.transactionId !== 'N/A' && orderPayload.transactionId !== orderPayload.utrNumber ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Transaction ID:</span>
-            <strong style="font-family: monospace; font-size: 0.8rem;">${orderPayload.transactionId}</strong>
-          </div>
-          ` : ''}
-          <div style="margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted); display: block; margin-bottom: 0.15rem;">Delivery Address:</span>
-            <strong style="line-height: 1.4; display: block; color: var(--color-text-main);">
-              ${houseNo}, ${address}, Near ${landmark}, ${state} - ${pincode}
-            </strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem; padding-top: 0.45rem; border-top: 1px dashed var(--color-border);">
-            <span style="color: var(--color-text-muted);">Courier Zone (${shippingInfo.label}):</span>
-            <strong>${formatINR(shippingInfo.fee)}</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
-            <span style="color: var(--color-text-muted);">Total Paid:</span>
-            <strong style="color: var(--color-primary-dark); font-size: 1.1rem;">${formatINR(grandTotal)}</strong>
-          </div>
+  // Show dedicated glass effect modal in middle of screen
+  showOrderPlacedGlassModal(orderPayload, waOrderText);
+}
 
-          <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fdf2f8; border-radius: var(--radius-sm); border: 1px solid #fbcfe8; font-size: 0.76rem; color: #9d174d; display: flex; align-items: center; gap: 0.35rem;">
-            <span>📬</span>
-            <span>Order details & payment UTR report dispatched to: <strong>Sridevigummadi37@gmail.com</strong></span>
-          </div>
-        </div>
+// DEDICATED ORDER PLACED GLASS EFFECT MODAL HANDLERS
+function showOrderPlacedGlassModal(order, waOrderText) {
+  const overlay = document.getElementById('orderPlacedModalOverlay');
+  const receiptContainer = document.getElementById('orderGlassReceiptContent');
+  const custMsg = document.getElementById('orderGlassCustomerMsg');
+  const waBtn = document.getElementById('orderGlassWaBtn');
 
-        <div style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 320px; margin: 0 auto;">
-          <a href="https://wa.me/919392430460?text=${waOrderText}" target="_blank" class="checkout-btn" style="text-decoration: none; background: #25D366; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);">
-            <span>Send Details on WhatsApp</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-            </svg>
-          </a>
-          <button class="checkout-btn" onclick="closeModal();" style="background: var(--color-text-main); box-shadow: none;">
-            Continue Shopping
-          </button>
-        </div>
+  if (custMsg) {
+    custMsg.innerHTML = `Thank you <strong>${order.customerName}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.`;
+  }
+
+  if (receiptContainer) {
+    receiptContainer.innerHTML = `
+      <div class="order-glass-row">
+        <span style="color: var(--color-text-muted);">Order ID:</span>
+        <strong style="color: var(--color-primary-dark); font-size: 0.95rem;">${order.orderId}</strong>
+      </div>
+      <div class="order-glass-row">
+        <span style="color: var(--color-text-muted);">Customer:</span>
+        <strong>${order.customerName} (+91 ${order.customerPhone})</strong>
+      </div>
+      <div class="order-glass-row">
+        <span style="color: var(--color-text-muted);">Payment App:</span>
+        <span class="mgmt-pay-app-pill">${order.paymentApp}</span>
+      </div>
+      <div class="order-glass-row">
+        <span style="color: var(--color-text-muted);">Payment UTR / Ref:</span>
+        <strong style="font-family: monospace; color: var(--color-primary-dark); font-size: 0.9rem;">${order.utrNumber}</strong>
+      </div>
+      ${order.transactionId && order.transactionId !== 'N/A' && order.transactionId !== order.utrNumber ? `
+      <div class="order-glass-row">
+        <span style="color: var(--color-text-muted);">Transaction ID:</span>
+        <strong style="font-family: monospace; font-size: 0.8rem;">${order.transactionId}</strong>
+      </div>
+      ` : ''}
+      <div style="margin: 0.5rem 0 0.35rem;">
+        <span style="color: var(--color-text-muted); font-size: 0.78rem; display: block; margin-bottom: 0.15rem;">Delivery Address:</span>
+        <strong style="line-height: 1.4; font-size: 0.82rem; display: block; color: var(--color-text-main);">
+          ${order.houseNo}, ${order.address}, Near ${order.landmark}, ${order.state} - ${order.pincode}
+        </strong>
+      </div>
+      <div class="order-glass-row" style="padding-top: 0.45rem; border-top: 1px dashed var(--color-border); margin-top: 0.35rem;">
+        <span style="color: var(--color-text-muted);">Courier Zone (${order.shippingZone}):</span>
+        <strong>${order.courierChargeFormatted || '₹' + order.courierCharge}</strong>
+      </div>
+      <div class="order-glass-row total-row">
+        <span style="font-weight: 700;">Total Amount Paid:</span>
+        <strong style="color: var(--color-primary-dark); font-size: 1.25rem; font-weight: 800;">${order.grandTotalFormatted || '₹' + order.grandTotal}</strong>
+      </div>
+      <div class="order-glass-notice">
+        <span>📬</span>
+        <span>Order details & payment UTR report dispatched to: <strong>Sridevigummadi37@gmail.com</strong></span>
       </div>
     `;
+  }
 
-    document.getElementById('modalOverlay')?.classList.add('open');
+  if (waBtn) {
+    waBtn.href = `https://wa.me/919392430460?text=${waOrderText}`;
+  }
+
+  if (overlay) {
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+    });
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeOrderPlacedModal() {
+  const overlay = document.getElementById('orderPlacedModalOverlay');
+  if (overlay) {
+    overlay.classList.remove('open');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }, 320);
   }
 }
 

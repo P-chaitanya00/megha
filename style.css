@@ -2352,6 +2352,224 @@ a {
   border-bottom: 1px dashed var(--color-border);
 }
 
+/* ===================================================================
+   ORDER PLACED GLASS EFFECT MODAL (MEDIUM BOX IN MIDDLE OF SCREEN)
+   =================================================================== */
+.order-placed-glass-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 7, 25, 0.72);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.order-placed-glass-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.order-placed-glass-card {
+  position: relative;
+  width: 100%;
+  max-width: 480px; /* Medium box in middle */
+  max-height: 90vh;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  box-shadow: 
+    0 25px 60px -10px rgba(74, 29, 90, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 1);
+  padding: 2.25rem 1.85rem;
+  text-align: center;
+  transform: scale(0.92) translateY(15px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.order-placed-glass-overlay.open .order-placed-glass-card {
+  transform: scale(1) translateY(0);
+}
+
+.order-glass-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.order-glass-close-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--color-text-main);
+}
+
+.order-glass-badge {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.order-glass-badge-pulse {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.25);
+  animation: glassPulse 2s infinite ease-out;
+}
+
+@keyframes glassPulse {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0.25; }
+  100% { transform: scale(0.85); opacity: 0.8; }
+}
+
+.order-glass-badge-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  position: relative;
+  z-index: 2;
+}
+
+.order-glass-title {
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.35rem;
+  line-height: 1.2;
+}
+
+.order-glass-sub {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+
+.order-glass-receipt {
+  background: rgba(248, 250, 252, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
+  text-align: left;
+  font-size: 0.85rem;
+  margin-bottom: 1.35rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.order-glass-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.45rem;
+  line-height: 1.35;
+  gap: 0.75rem;
+}
+
+.order-glass-row strong {
+  color: var(--color-text-main);
+}
+
+.order-glass-row.total-row {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1.5px dashed var(--color-border);
+  font-size: 1.05rem;
+  align-items: center;
+}
+
+.order-glass-notice {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  background: #fdf2f8;
+  border-radius: 10px;
+  border: 1px solid #fbcfe8;
+  font-size: 0.75rem;
+  color: #9d174d;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.35;
+}
+
+.order-glass-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.order-glass-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-full);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition-fast);
+}
+
+.order-glass-btn-wa {
+  background: #25D366;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35);
+}
+
+.order-glass-btn-wa:hover {
+  background: #20bd5a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.45);
+}
+
+.order-glass-btn-close {
+  background: var(--color-text-main);
+  color: #ffffff;
+}
+
+.order-glass-btn-close:hover {
+  background: #000000;
+  transform: translateY(-2px);
+}
+
 /* Orders Table Styling in Management Portal */
 .mgmt-orders-table {
   width: 100%;
