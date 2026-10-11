@@ -252,6 +252,58 @@ const PRODUCTS = [
     image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=700&q=80',
     description: 'Custom resin initial keychain for him, artisanal coffee scented candle, waterproof bracelet, and chocolate truffles in an elegant matte gift case.',
     tags: ['Men Box', 'Personalized', 'Executive']
+  },
+
+  // 11. SPECIAL GIFTS (Both/Unisex)
+  {
+    id: 'sgift_1',
+    name: 'Eternal Rose Preserved Resin Gift Box',
+    category: 'Special gifts',
+    gender: 'both',
+    offerPrice: 849,
+    originalPrice: 1299,
+    badge: 'Special Gift',
+    image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=700&q=80',
+    description: 'Real preserved red rose immersed in glass-clear crystal resin, accompanied by personalized keepsake message card and velvet storage pouch.',
+    tags: ['Special Gift', 'Forever Rose', 'Anniversary']
+  },
+  {
+    id: 'sgift_2',
+    name: 'Luxury Couples Matching Memory Keepsake Set',
+    category: 'Special gifts',
+    gender: 'both',
+    offerPrice: 1099,
+    originalPrice: 1699,
+    badge: 'Limited Edition',
+    image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=700&q=80',
+    description: 'Handcrafted matching couple bracelets with anti-tarnish magnetic charms, scented French lavender candle, and embossed luxury gift box.',
+    tags: ['Couples Gift', 'Handmade Keepsake', 'Bespoke']
+  },
+
+  // 12. NEW LAUNCHES (Both/Unisex)
+  {
+    id: 'nlaunch_1',
+    name: 'Celestial Aurora Borealis Opal Pendant (New Drop)',
+    category: 'New launches',
+    gender: 'both',
+    offerPrice: 649,
+    originalPrice: 999,
+    badge: 'New Launch',
+    image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80',
+    description: 'Just dropped! Iridescent aurora lab opal embraced by 18K waterproof gold PVD casing. Shimmers in green and lavender undertones.',
+    tags: ['Fresh Arrival', 'Waterproof Opal', 'Trending']
+  },
+  {
+    id: 'nlaunch_2',
+    name: 'Artisan 3D Floral Blooming Resin Dome (New Release)',
+    category: 'New launches',
+    gender: 'both',
+    offerPrice: 799,
+    originalPrice: 1199,
+    badge: 'New Launch',
+    image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=700&q=80',
+    description: 'Newly launched botanical preservation dome featuring fresh pressed hydrangeas and micro fairy lights inside bubble-free crystal resin.',
+    tags: ['New In', 'Botanical Art', 'Home Accent']
   }
 ];
 

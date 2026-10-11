@@ -670,6 +670,17 @@ a {
   color: var(--color-text-main);
 }
 
+.capsule-chip.highlight-chip {
+  background: linear-gradient(135deg, #fff0f7 0%, #f7efff 100%);
+  border-color: rgba(236, 72, 153, 0.35);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.12);
+}
+
+.capsule-chip.highlight-chip .capsule-name {
+  color: var(--color-primary-dark);
+  font-weight: 800;
+}
+
 
 /* Hero Quick Action Buttons */
 .hero-action-pills {
