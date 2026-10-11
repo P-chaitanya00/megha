@@ -301,41 +301,9 @@ function setupEventListeners() {
     });
   }
 
-  // Shipping Pincode and Country/Zone Selection
-  const shippingPincodeInput = document.getElementById('shippingPincodeInput');
-  const shippingCountrySelect = document.getElementById('shippingCountrySelect');
-
-  if (shippingPincodeInput) {
-    if (currentShippingPincode) shippingPincodeInput.value = currentShippingPincode;
-    shippingPincodeInput.addEventListener('input', (e) => {
-      currentShippingPincode = e.target.value.trim();
-      localStorage.setItem('gnapakalu_pincode', currentShippingPincode);
-      if (shippingCountrySelect && currentShippingPincode) {
-        shippingCountrySelect.value = 'auto';
-        currentShippingZone = 'auto';
-        localStorage.setItem('gnapakalu_zone', 'auto');
-      }
-      updateCartUI();
-    });
-  }
-
-  if (shippingCountrySelect) {
-    if (currentShippingZone) shippingCountrySelect.value = currentShippingZone;
-    shippingCountrySelect.addEventListener('change', (e) => {
-      currentShippingZone = e.target.value;
-      localStorage.setItem('gnapakalu_zone', currentShippingZone);
-      if (currentShippingZone !== 'auto' && shippingPincodeInput) {
-        shippingPincodeInput.value = '';
-        currentShippingPincode = '';
-        localStorage.removeItem('gnapakalu_pincode');
-      }
-      updateCartUI();
-    });
-  }
-
-  // Checkout
+  // Checkout - Opens Customer Delivery & Address Details Modal
   const checkoutBtn = document.getElementById('checkoutBtn');
-  if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
+  if (checkoutBtn) checkoutBtn.addEventListener('click', openCheckoutModal);
 }
 
 // ===============================================================
@@ -859,23 +827,15 @@ function updateCartUI() {
     discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
   }
 
-  // Calculate dynamic courier charge
-  const shippingInfo = getShippingDetails(currentShippingPincode, currentShippingZone);
-  const courierCharge = shippingInfo.fee;
-  const grandTotal = Math.max(0, subtotal - discount + courierCharge);
+  const grandTotal = Math.max(0, subtotal - discount);
 
   if (subtotalElem) subtotalElem.textContent = formatINR(subtotal);
   if (totalElem) totalElem.textContent = formatINR(grandTotal);
 
-  // Update dynamic shipping rate line and notice badge
+  // In the cart drawer, courier charge is indicated as calculated at next step based on pincode
   const cartDeliveryCharge = document.getElementById('cartDeliveryCharge');
   if (cartDeliveryCharge) {
-    cartDeliveryCharge.textContent = formatINR(courierCharge);
-  }
-
-  const shippingZoneBadge = document.getElementById('shippingZoneBadge');
-  if (shippingZoneBadge) {
-    shippingZoneBadge.innerHTML = `📦 ${shippingInfo.label}: <strong>${formatINR(courierCharge)}/-</strong>`;
+    cartDeliveryCharge.textContent = 'Calculated at next step';
   }
 
   if (discountRow && discountElem) {
@@ -888,7 +848,7 @@ function updateCartUI() {
   }
 
   if (shippingStatus && shippingFill) {
-    shippingStatus.innerHTML = `📍 <strong>Courier to ${shippingInfo.label}:</strong> ${formatINR(courierCharge)}/- applied`;
+    shippingStatus.innerHTML = `✨ <strong>100% Handcrafted</strong> • Safe Doorstep Delivery Across India • Velvet Box Included`;
     shippingFill.style.width = '100%';
   }
 }
@@ -1051,12 +1011,300 @@ function closeModal() {
   document.getElementById('modalOverlay')?.classList.remove('open');
 }
 
-// CHECKOUT SIMULATION WITH REAL-TIME STOCK INVENTORY REDUCTION
-function handleCheckout() {
+// ===============================================================
+// CUSTOMER CHECKOUT & DELIVERY DETAILS FLOW
+// ===============================================================
+
+let checkoutShippingInfo = {
+  fee: 0,
+  label: 'Pending Pincode',
+  state: '',
+  isComplete: false,
+  code: 'PENDING'
+};
+
+function openCheckoutModal() {
   if (cart.length === 0) {
     showToast('Your bag is empty!');
     return;
   }
+  closeCart();
+
+  // Pre-fill previously saved customer details from localStorage if available
+  try {
+    const saved = JSON.parse(localStorage.getItem('gnapakalu_cust_details') || '{}');
+    if (saved.name) document.getElementById('custName').value = saved.name;
+    if (saved.phone) document.getElementById('custPhone').value = saved.phone;
+    if (saved.houseNo) document.getElementById('custHouseNo').value = saved.houseNo;
+    if (saved.address) document.getElementById('custAddress').value = saved.address;
+    if (saved.landmark) document.getElementById('custLandmark').value = saved.landmark;
+    if (saved.state) document.getElementById('custState').value = saved.state;
+    if (saved.pincode) {
+      document.getElementById('custPincode').value = saved.pincode;
+      onCheckoutPincodeInput(saved.pincode);
+    } else {
+      updateCheckoutSummaryUI();
+    }
+  } catch (err) {
+    updateCheckoutSummaryUI();
+  }
+
+  const modal = document.getElementById('checkoutModalOverlay');
+  if (modal) {
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeCheckoutModal() {
+  const modal = document.getElementById('checkoutModalOverlay');
+  if (modal) {
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+function closeCheckoutOnBackdrop(e) {
+  if (e.target && e.target.id === 'checkoutModalOverlay') {
+    closeCheckoutModal();
+  }
+}
+
+// Real-time backend pincode lookup & courier rate logic
+function calculateShippingFromPincode(pincode, stateHint = '') {
+  const pin = String(pincode || '').trim().replace(/\D/g, '');
+
+  if (pin.length === 6) {
+    const p2 = parseInt(pin.slice(0, 2), 10);
+    // Telangana (500000 - 509999) -> ₹125
+    if (p2 === 50) {
+      return {
+        fee: SHIPPING_RATES.TS.rate,
+        label: 'Telangana (TS)',
+        state: 'Telangana',
+        isComplete: true,
+        code: 'TS'
+      };
+    }
+    // Andhra Pradesh (515000 - 535999) -> ₹85
+    if (p2 >= 51 && p2 <= 53) {
+      return {
+        fee: SHIPPING_RATES.AP.rate,
+        label: 'Andhra Pradesh (AP)',
+        state: 'Andhra Pradesh',
+        isComplete: true,
+        code: 'AP'
+      };
+    }
+    // Rest of India (100000 - 999999) -> ₹135
+    if (p2 >= 10 && p2 <= 99) {
+      return {
+        fee: SHIPPING_RATES.INDIA.rate,
+        label: 'All Over India (Standard)',
+        state: stateHint || '',
+        isComplete: true,
+        code: 'INDIA'
+      };
+    }
+  }
+
+  // If state was selected manually from dropdown before pincode is entered
+  if (stateHint === 'Andhra Pradesh') {
+    return { fee: SHIPPING_RATES.AP.rate, label: 'Andhra Pradesh (AP)', state: 'Andhra Pradesh', isComplete: false, code: 'AP' };
+  }
+  if (stateHint === 'Telangana') {
+    return { fee: SHIPPING_RATES.TS.rate, label: 'Telangana (TS)', state: 'Telangana', isComplete: false, code: 'TS' };
+  }
+  if (stateHint) {
+    return { fee: SHIPPING_RATES.INDIA.rate, label: 'All Over India', state: stateHint, isComplete: false, code: 'INDIA' };
+  }
+
+  return { fee: 0, label: 'Pending Pincode', state: '', isComplete: false, code: 'PENDING' };
+}
+
+function onCheckoutPincodeInput(val) {
+  const cleanPin = String(val || '').replace(/\D/g, '').slice(0, 6);
+  const pinInput = document.getElementById('custPincode');
+  if (pinInput && pinInput.value !== cleanPin) pinInput.value = cleanPin;
+
+  const stateSelect = document.getElementById('custState');
+  const currentStateHint = stateSelect ? stateSelect.value : '';
+
+  checkoutShippingInfo = calculateShippingFromPincode(cleanPin, currentStateHint);
+
+  // If pincode strictly identifies state, automatically sync the dropdown
+  if (checkoutShippingInfo.isComplete && checkoutShippingInfo.state && stateSelect) {
+    if (checkoutShippingInfo.code === 'AP') stateSelect.value = 'Andhra Pradesh';
+    else if (checkoutShippingInfo.code === 'TS') stateSelect.value = 'Telangana';
+  }
+
+  // Update UI notice banner
+  const noticeBox = document.getElementById('checkoutPincodeNotice');
+  const noticeIcon = document.getElementById('pincodeNoticeIcon');
+  const noticeText = document.getElementById('pincodeNoticeText');
+  const statusIcon = document.getElementById('custPincodeStatus');
+
+  if (cleanPin.length === 6) {
+    if (statusIcon) statusIcon.textContent = '✅';
+    if (noticeBox) {
+      noticeBox.className = 'checkout-pincode-notice valid-zone';
+    }
+    if (noticeIcon) noticeIcon.textContent = '📦';
+    if (noticeText) {
+      noticeText.innerHTML = `<strong>Verified Zone: ${checkoutShippingInfo.label}</strong> — Courier charge <strong>${formatINR(checkoutShippingInfo.fee)}/-</strong> has been added to your total.`;
+    }
+  } else if (cleanPin.length > 0) {
+    if (statusIcon) statusIcon.textContent = '⏳';
+    if (noticeBox) noticeBox.className = 'checkout-pincode-notice';
+    if (noticeIcon) noticeIcon.textContent = '📍';
+    if (noticeText) {
+      noticeText.innerHTML = `Enter ${6 - cleanPin.length} more digit(s) for instant courier rate verification.`;
+    }
+  } else {
+    if (statusIcon) statusIcon.textContent = '📍';
+    if (noticeBox) noticeBox.className = 'checkout-pincode-notice';
+    if (noticeIcon) noticeIcon.textContent = '📍';
+    if (noticeText) {
+      noticeText.innerHTML = `Enter your <strong>6-digit Pincode</strong> to calculate applicable courier charge.`;
+    }
+  }
+
+  updateCheckoutSummaryUI();
+}
+
+function onCheckoutStateChange(val) {
+  const pinInput = document.getElementById('custPincode');
+  const cleanPin = pinInput ? pinInput.value.trim() : '';
+  checkoutShippingInfo = calculateShippingFromPincode(cleanPin, val);
+  updateCheckoutSummaryUI();
+}
+
+function updateCheckoutSummaryUI() {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  let discount = 0;
+  if (appliedPromo) {
+    discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
+  }
+
+  const fee = checkoutShippingInfo.fee || 0;
+  const grandTotal = Math.max(0, subtotal - discount + fee);
+
+  const countElem = document.getElementById('checkoutItemCount');
+  const subtotalElem = document.getElementById('checkoutSubtotal');
+  const discountRow = document.getElementById('checkoutDiscountRow');
+  const discountElem = document.getElementById('checkoutDiscount');
+  const zoneBadge = document.getElementById('checkoutShippingZoneBadge');
+  const deliveryChargeElem = document.getElementById('checkoutDeliveryCharge');
+  const finalTotalElem = document.getElementById('checkoutFinalTotal');
+  const btnPlaceOrder = document.getElementById('btnPlaceOrder');
+
+  if (countElem) countElem.textContent = cart.reduce((s, i) => s + i.qty, 0);
+  if (subtotalElem) subtotalElem.textContent = formatINR(subtotal);
+
+  if (discountRow && discountElem) {
+    if (appliedPromo && discount > 0) {
+      discountRow.style.display = 'flex';
+      discountElem.textContent = `-${formatINR(discount)} (${appliedPromo.code})`;
+    } else {
+      discountRow.style.display = 'none';
+    }
+  }
+
+  if (zoneBadge) {
+    if (checkoutShippingInfo.isComplete) {
+      zoneBadge.className = 'shipping-rate-pill ready';
+      zoneBadge.textContent = `${checkoutShippingInfo.label} (${formatINR(fee)})`;
+    } else {
+      zoneBadge.className = 'shipping-rate-pill';
+      zoneBadge.textContent = 'Pending Pincode';
+    }
+  }
+
+  if (deliveryChargeElem) {
+    if (checkoutShippingInfo.isComplete) {
+      deliveryChargeElem.textContent = formatINR(fee);
+    } else {
+      deliveryChargeElem.textContent = 'Enter Pincode';
+    }
+  }
+
+  if (finalTotalElem) {
+    finalTotalElem.textContent = formatINR(grandTotal);
+  }
+
+  if (btnPlaceOrder) {
+    btnPlaceOrder.innerHTML = `
+      <span>Place Order (${formatINR(grandTotal)})</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    `;
+  }
+}
+
+// Order Submission & Verification
+function submitCustomerOrder(event) {
+  if (event) event.preventDefault();
+
+  if (cart.length === 0) {
+    showToast('Your bag is empty!');
+    return;
+  }
+
+  const name = document.getElementById('custName')?.value.trim();
+  const phone = document.getElementById('custPhone')?.value.trim();
+  const houseNo = document.getElementById('custHouseNo')?.value.trim();
+  const address = document.getElementById('custAddress')?.value.trim();
+  const landmark = document.getElementById('custLandmark')?.value.trim();
+  const state = document.getElementById('custState')?.value.trim();
+  const pincode = document.getElementById('custPincode')?.value.trim();
+
+  // Validations
+  if (!name || name.length < 2) {
+    showToast('Please enter your full name');
+    document.getElementById('custName')?.focus();
+    return;
+  }
+  if (!phone || !/^\d{10}$/.test(phone)) {
+    showToast('Please enter a valid 10-digit mobile number');
+    document.getElementById('custPhone')?.focus();
+    return;
+  }
+  if (!houseNo) {
+    showToast('Please enter your House / Flat / Door Number');
+    document.getElementById('custHouseNo')?.focus();
+    return;
+  }
+  if (!address) {
+    showToast('Please enter your Street / Area / Colony address');
+    document.getElementById('custAddress')?.focus();
+    return;
+  }
+  if (!landmark) {
+    showToast('Please enter a nearby landmark');
+    document.getElementById('custLandmark')?.focus();
+    return;
+  }
+  if (!pincode || !/^\d{6}$/.test(pincode)) {
+    showToast('Please enter a valid 6-digit Pincode');
+    document.getElementById('custPincode')?.focus();
+    return;
+  }
+  if (!state) {
+    showToast('Please select your state');
+    document.getElementById('custState')?.focus();
+    return;
+  }
+
+  // Calculate final shipping strictly via backend pincode checker
+  const shippingInfo = calculateShippingFromPincode(pincode, state);
+
+  // Save customer details in localStorage for future convenience
+  try {
+    localStorage.setItem('gnapakalu_cust_details', JSON.stringify({
+      name, phone, houseNo, address, landmark, state, pincode
+    }));
+  } catch (e) {}
 
   // 1. DEDUCT ITEM QUANTITY FROM PRODUCT STOCK ON SUCCESSFUL ORDER PLACEMENT
   cart.forEach(cartItem => {
@@ -1068,63 +1316,99 @@ function handleCheckout() {
     }
   });
 
-  // Save stock deduction immediately to localStorage and refresh live views
   saveProducts();
+  renderProducts();
 
+  // Compute order totals
   const orderNum = Math.floor(100000 + Math.random() * 900000);
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   let discount = 0;
   if (appliedPromo) {
     discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
   }
-  const shippingInfo = getShippingDetails(currentShippingPincode, currentShippingZone);
-  const total = formatINR(Math.max(0, subtotal - discount + shippingInfo.fee));
+  const grandTotal = Math.max(0, subtotal - discount + shippingInfo.fee);
+  const orderedItemsBackup = [...cart];
 
-  closeCart();
+  // Close checkout modal & clear cart
+  closeCheckoutModal();
+  cart = [];
+  saveCart();
+  updateCartUI();
 
+  // Construct WhatsApp order message
+  const waOrderText = encodeURIComponent(
+    `*✨ New Order - Gnapakalu by Megha*\n\n` +
+    `*Order ID:* #GNAP-${orderNum}\n` +
+    `*Customer Name:* ${name}\n` +
+    `*Phone:* +91 ${phone}\n\n` +
+    `*📍 Delivery Address:*\n` +
+    `${houseNo}, ${address}\n` +
+    `Landmark: ${landmark}\n` +
+    `State: ${state} - PIN: ${pincode}\n\n` +
+    `*📦 Ordered Items:*\n` +
+    orderedItemsBackup.map(i => `• ${i.name} (${i.selectedVariant || i.category}) x ${i.qty} = ${formatINR(i.price * i.qty)}`).join('\n') +
+    `\n\n*💰 Payment Summary:*\n` +
+    `Subtotal: ${formatINR(subtotal)}\n` +
+    (discount > 0 ? `Discount (${appliedPromo ? appliedPromo.code : ''}): -${formatINR(discount)}\n` : '') +
+    `Courier Charge (${shippingInfo.label}): ${formatINR(shippingInfo.fee)}\n` +
+    `*Grand Total: ${formatINR(grandTotal)}*\n\n` +
+    `Please confirm the order and dispatch details.`
+  );
+
+  // Render Order Placed modal
   const content = document.getElementById('quickViewContent');
-  if (!content) return;
+  if (content) {
+    content.innerHTML = `
+      <div style="padding: 2.25rem 1.5rem; text-align: center;">
+        <div style="width: 70px; height: 70px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 2.2rem; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.2);">
+          ✓
+        </div>
+        <h2 style="font-family: var(--font-serif); font-size: 1.85rem; margin-bottom: 0.35rem; color: var(--color-text-main);">Order Placed Successfully!</h2>
+        <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          Thank you <strong>${name}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.
+        </p>
+        
+        <div style="background: var(--color-bg); padding: 1.25rem; border-radius: var(--radius-md); max-width: 440px; margin: 0 auto 1.5rem; text-align: left; font-size: 0.88rem; border: 1px solid var(--color-border);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted);">Order ID:</span>
+            <strong style="color: var(--color-primary-dark);">#GNAP-${orderNum}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted);">Contact:</span>
+            <strong>+91 ${phone}</strong>
+          </div>
+          <div style="margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted); display: block; margin-bottom: 0.15rem;">Delivery Address:</span>
+            <strong style="line-height: 1.4; display: block; color: var(--color-text-main);">
+              ${houseNo}, ${address}, Near ${landmark}, ${state} - ${pincode}
+            </strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem; padding-top: 0.45rem; border-top: 1px dashed var(--color-border);">
+            <span style="color: var(--color-text-muted);">Courier Zone (${shippingInfo.label}):</span>
+            <strong>${formatINR(shippingInfo.fee)}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+            <span style="color: var(--color-text-muted);">Total Paid:</span>
+            <strong style="color: var(--color-primary-dark); font-size: 1.1rem;">${formatINR(grandTotal)}</strong>
+          </div>
+        </div>
 
-  content.innerHTML = `
-    <div style="padding: 2.5rem 1.5rem; text-align: center;">
-      <div style="width: 72px; height: 72px; background: var(--color-primary-soft); color: var(--color-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">
-        ✨
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 320px; margin: 0 auto;">
+          <a href="https://wa.me/?text=${waOrderText}" target="_blank" class="checkout-btn" style="text-decoration: none; background: #25D366; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);">
+            <span>Send Details on WhatsApp</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+            </svg>
+          </a>
+          <button class="checkout-btn" onclick="closeModal();" style="background: var(--color-text-main); box-shadow: none;">
+            Continue Shopping
+          </button>
+        </div>
       </div>
-      <h2 style="font-family: var(--font-serif); font-size: 1.9rem; margin-bottom: 0.5rem;">Order Placed Successfully!</h2>
-      <p style="color: var(--color-text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">
-        Thank you for supporting <strong>Gnapakalu by Megha</strong>! Your pieces are entering velvet packaging.
-      </p>
-      
-      <div style="background: var(--color-bg); padding: 1.25rem; border-radius: var(--radius-md); max-width: 420px; margin: 0 auto 2rem; text-align: left; font-size: 0.88rem;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
-          <span style="color: var(--color-text-muted);">Order ID:</span>
-          <strong>#GNAP-${orderNum}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
-          <span style="color: var(--color-text-muted);">Courier Destination:</span>
-          <strong>${shippingInfo.label}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
-          <span style="color: var(--color-text-muted);">Courier Fee:</span>
-          <strong>${formatINR(shippingInfo.fee)}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; border-top: 1px dashed var(--color-border); padding-top: 0.4rem;">
-          <span style="color: var(--color-text-muted);">Total Paid:</span>
-          <strong style="color: var(--color-primary-dark); font-size: 1.05rem;">${total}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--color-text-muted);">Estimated Delivery:</span>
-          <strong>2-4 Business Days</strong>
-        </div>
-      </div>
+    `;
 
-      <button class="checkout-btn" onclick="cart = []; saveCart(); updateCartUI(); closeModal();" style="max-width: 280px; margin: 0 auto;">
-        Continue Shopping
-      </button>
-    </div>
-  `;
-
-  document.getElementById('modalOverlay')?.classList.add('open');
+    document.getElementById('modalOverlay')?.classList.add('open');
+  }
 }
 
 // TOASTS

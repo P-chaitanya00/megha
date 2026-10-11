@@ -462,7 +462,7 @@
 
     <div class="shipping-meter">
       <div class="shipping-meter-text" id="shippingStatus">
-        📦 AP: ₹85 | Telangana: ₹125 | All India: ₹135 | Other: ₹3499
+        ✨ 100% Handcrafted • Safe Doorstep Delivery Across India • Velvet Box Included
       </div>
       <div class="meter-track">
         <div class="meter-fill" id="shippingMeterFill" style="width: 100%;"></div>
@@ -477,26 +477,6 @@
         <button type="button" id="applyPromoBtn" class="promo-btn">Apply</button>
       </div>
 
-      <!-- Dynamic Courier & Delivery Calculator -->
-      <div class="shipping-calculator-box">
-        <label for="shippingPincodeInput" class="shipping-calc-label">
-          <span>📍 Shipping & Courier Rate:</span>
-        </label>
-        <div class="shipping-input-group">
-          <input type="text" id="shippingPincodeInput" class="shipping-pincode-input" placeholder="Enter 6-digit Pincode" maxlength="6" aria-label="Enter Pincode">
-          <select id="shippingCountrySelect" class="shipping-country-select" aria-label="Select Country/State">
-            <option value="auto">India (By Pincode)</option>
-            <option value="ap">Andhra Pradesh (AP)</option>
-            <option value="ts">Telangana (TS)</option>
-            <option value="india">All Over India</option>
-            <option value="international">Other Countries (International)</option>
-          </select>
-        </div>
-        <div id="shippingZoneNotice" class="shipping-zone-notice">
-          <span id="shippingZoneBadge">📦 Courier Rate: ₹135/- (All India)</span>
-        </div>
-      </div>
-
       <div class="summary-row">
         <span>Bag Subtotal:</span>
         <span id="cartSubtotal">₹0</span>
@@ -506,15 +486,15 @@
         <span id="cartDiscount">-₹0</span>
       </div>
       <div class="summary-row">
-        <span>Courier Charge:</span>
-        <span id="cartDeliveryCharge" style="color: var(--color-primary-dark); font-weight: 700;">₹135</span>
+        <span>Courier / Delivery:</span>
+        <span id="cartDeliveryCharge" style="color: var(--color-primary-dark); font-size: 0.8rem; font-weight: 700;">Calculated at next step</span>
       </div>
       <div class="summary-row total-row">
-        <span>Grand Total:</span>
+        <span>Estimated Total:</span>
         <span id="cartTotal">₹0</span>
       </div>
 
-      <button class="checkout-btn" id="checkoutBtn">
+      <button class="checkout-btn" id="checkoutBtn" onclick="openCheckoutModal()">
         <span>Proceed to Order</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -524,11 +504,149 @@
     </div>
   </aside>
 
-  <!-- QUICK VIEW & ORDER MODAL -->
+  <!-- QUICK VIEW & ORDER SUCCESS MODAL -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-container">
       <button class="modal-close-btn" id="modalCloseBtn" aria-label="Close modal">✕</button>
       <div id="quickViewContent"></div>
+    </div>
+  </div>
+
+  <!-- ===============================================================
+       CUSTOMER DELIVERY DETAILS & ORDER CHECKOUT MODAL
+       =============================================================== -->
+  <div class="modal-overlay" id="checkoutModalOverlay" onclick="closeCheckoutOnBackdrop(event)">
+    <div class="modal-container checkout-modal-container">
+      <button class="modal-close-btn" id="checkoutCloseBtn" onclick="closeCheckoutModal()" aria-label="Close Checkout">✕</button>
+      
+      <div class="checkout-modal-header">
+        <div class="checkout-step-badge">Shipping & Delivery Details</div>
+        <h2 class="checkout-modal-title">Enter Delivery Address</h2>
+        <p class="checkout-modal-sub">Please fill in your address for safe doorstep courier delivery.</p>
+      </div>
+
+      <form id="checkoutForm" onsubmit="submitCustomerOrder(event)" class="checkout-form">
+        <div class="checkout-form-grid">
+          <!-- Full Name -->
+          <div class="checkout-field-col">
+            <label for="custName" class="checkout-label">Customer Name <span class="req-star">*</span></label>
+            <input type="text" id="custName" class="checkout-input" placeholder="e.g. Megha Sharma" required autocomplete="name">
+          </div>
+
+          <!-- Mobile Number -->
+          <div class="checkout-field-col">
+            <label for="custPhone" class="checkout-label">Mobile Number <span class="req-star">*</span></label>
+            <div class="phone-input-wrap">
+              <span class="phone-prefix">+91</span>
+              <input type="tel" id="custPhone" class="checkout-input phone-field" placeholder="10-digit mobile number" maxlength="10" required autocomplete="tel" oninput="this.value = this.value.replace(/\\D/g, '')">
+            </div>
+          </div>
+
+          <!-- House Number / Flat / Door No -->
+          <div class="checkout-field-col">
+            <label for="custHouseNo" class="checkout-label">House / Flat / Door No. <span class="req-star">*</span></label>
+            <input type="text" id="custHouseNo" class="checkout-input" placeholder="e.g. Flat 302, Sri Sai Nilayam" required autocomplete="address-line1">
+          </div>
+
+          <!-- Landmark -->
+          <div class="checkout-field-col">
+            <label for="custLandmark" class="checkout-label">Landmark <span class="req-star">*</span></label>
+            <input type="text" id="custLandmark" class="checkout-input" placeholder="e.g. Near Community Hall / Metro Pillar 42" required>
+          </div>
+
+          <!-- Street / Area / Colony -->
+          <div class="checkout-field-full">
+            <label for="custAddress" class="checkout-label">Street / Colony / Area Address <span class="req-star">*</span></label>
+            <textarea id="custAddress" class="checkout-input checkout-textarea" rows="2" placeholder="e.g. Road No. 12, Banjara Hills" required autocomplete="address-line2"></textarea>
+          </div>
+
+          <!-- Pincode -->
+          <div class="checkout-field-col">
+            <label for="custPincode" class="checkout-label">6-Digit Pincode <span class="req-star">*</span></label>
+            <div class="pincode-input-wrap">
+              <input type="text" id="custPincode" class="checkout-input" placeholder="Enter 6-digit Pincode" maxlength="6" required autocomplete="postal-code" oninput="onCheckoutPincodeInput(this.value)">
+              <span id="custPincodeStatus" class="pincode-status-icon">📍</span>
+            </div>
+          </div>
+
+          <!-- State -->
+          <div class="checkout-field-col">
+            <label for="custState" class="checkout-label">State <span class="req-star">*</span></label>
+            <select id="custState" class="checkout-input checkout-select" required onchange="onCheckoutStateChange(this.value)">
+              <option value="">Select State</option>
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Delhi">Delhi NCR</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Rajasthan">Rajasthan</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="West Bengal">West Bengal</option>
+              <option value="Madhya Pradesh">Madhya Pradesh</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Odisha">Odisha</option>
+              <option value="Assam">Assam</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Jharkhand">Jharkhand</option>
+              <option value="Chhattisgarh">Chhattisgarh</option>
+              <option value="Uttarakhand">Uttarakhand</option>
+              <option value="Himachal Pradesh">Himachal Pradesh</option>
+              <option value="Goa">Goa</option>
+              <option value="Jammu & Kashmir">Jammu & Kashmir</option>
+              <option value="Other States / UT">Other States / UT</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pincode Verification & Courier Rate Banner -->
+        <div id="checkoutPincodeNotice" class="checkout-pincode-notice">
+          <div class="pincode-notice-inner">
+            <span id="pincodeNoticeIcon">📍</span>
+            <div id="pincodeNoticeText">
+              Enter your <strong>6-digit Pincode</strong> to calculate applicable courier charge.
+            </div>
+          </div>
+        </div>
+
+        <!-- Price Summary Breakdown -->
+        <div class="checkout-summary-box">
+          <div class="checkout-summary-title">Order & Payment Breakdown</div>
+          
+          <div class="checkout-summary-row">
+            <span>Bag Subtotal (<span id="checkoutItemCount">0</span> items):</span>
+            <span id="checkoutSubtotal">₹0</span>
+          </div>
+          
+          <div class="checkout-summary-row" id="checkoutDiscountRow" style="display: none; color: var(--color-accent-pink);">
+            <span>Promotional Discount:</span>
+            <span id="checkoutDiscount">-₹0</span>
+          </div>
+
+          <div class="checkout-summary-row highlight-shipping-row">
+            <span style="display: flex; align-items: center; gap: 0.4rem;">
+              <span>Courier Charge:</span>
+              <span id="checkoutShippingZoneBadge" class="shipping-rate-pill">Pending Pincode</span>
+            </span>
+            <span id="checkoutDeliveryCharge" class="shipping-charge-val">₹--</span>
+          </div>
+
+          <div class="checkout-summary-row final-total-row">
+            <span>Total Payable Amount:</span>
+            <span id="checkoutFinalTotal">₹0</span>
+          </div>
+        </div>
+
+        <button type="submit" class="checkout-btn order-submit-btn" id="btnPlaceOrder">
+          <span>Place Order</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </button>
+      </form>
     </div>
   </div>
 
