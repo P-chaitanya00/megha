@@ -2151,6 +2151,207 @@ a {
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
 }
 
+/* QR Code Showcase in Checkout Modal */
+.checkout-qr-showcase {
+  background: linear-gradient(135deg, #fdf4f9 0%, #faf5ff 100%);
+  border: 1.5px solid rgba(236, 72, 153, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1rem;
+  margin: 0.5rem 0;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
+  transition: var(--transition-fast);
+}
+
+.checkout-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.checkout-qr-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.qr-brand-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ffffff;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #5f259f;
+  border: 1px solid rgba(95, 37, 159, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.qr-secure-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.qr-merchant-name {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.qr-terminal-id {
+  font-size: 0.74rem;
+  font-family: monospace;
+  color: var(--color-text-muted);
+}
+
+.checkout-qr-img-wrap {
+  background: #ffffff;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border);
+  display: inline-block;
+  margin: 0.25rem auto;
+}
+
+.checkout-qr-img {
+  width: 195px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1.35;
+  object-fit: contain;
+  display: block;
+  border-radius: var(--radius-sm);
+}
+
+.checkout-qr-amount-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffffff;
+  padding: 0.45rem 1.15rem;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-primary-soft);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12);
+}
+
+.qr-pay-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.qr-pay-amount {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.checkout-qr-apps-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.qr-apps-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.qr-app-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.qr-app-pill.app-phonepe { background: #f3e5f5; color: #5f259f; }
+.qr-app-pill.app-gpay { background: #e8f5e9; color: #2e7d32; }
+.qr-app-pill.app-paytm { background: #e1f5fe; color: #00b9f1; }
+.qr-app-pill.app-bhim { background: #fff8e1; color: #f57f17; }
+
+.checkout-direct-upi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  background: #5f259f;
+  color: #ffffff;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(95, 37, 159, 0.25);
+  transition: var(--transition-fast);
+  margin-top: 0.2rem;
+}
+
+.checkout-direct-upi-btn:hover {
+  background: #4a1d7b;
+  transform: translateY(-1px);
+}
+
+.checkout-qr-steps-guide {
+  background: #ffffff;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+  font-size: 0.76rem;
+  color: #475569;
+  margin-top: 0.35rem;
+}
+
+.qr-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.qr-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.utr-section-heading {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px dashed var(--color-border);
+}
+
 /* Orders Table Styling in Management Portal */
 .mgmt-orders-table {
   width: 100%;

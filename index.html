@@ -600,22 +600,24 @@
               Enter your <strong>6-digit Pincode</strong> to calculate applicable courier charge.
             </div>
           </div>
+        </div>
+
         <!-- Payment App / Method Selection -->
         <div class="checkout-payment-section">
-          <label class="checkout-label">Payment App / Method Used <span class="req-star">*</span></label>
+          <label class="checkout-label">Select Payment Method <span class="req-star">*</span></label>
           <div class="payment-apps-grid">
-            <label class="payment-app-card active" id="payCard-gpay">
-              <input type="radio" name="paymentAppChoice" value="Google Pay (GPay)" checked onchange="selectPaymentApp('Google Pay (GPay)', 'payCard-gpay')">
-              <div class="payment-app-inner">
-                <span class="pay-app-icon" style="background: #e8f5e9; color: #2e7d32;">GPay</span>
-                <span class="pay-app-title">Google Pay</span>
-              </div>
-            </label>
-            <label class="payment-app-card" id="payCard-phonepe">
-              <input type="radio" name="paymentAppChoice" value="PhonePe" onchange="selectPaymentApp('PhonePe', 'payCard-phonepe')">
+            <label class="payment-app-card active" id="payCard-phonepe">
+              <input type="radio" name="paymentAppChoice" value="PhonePe" checked onchange="selectPaymentApp('PhonePe', 'payCard-phonepe')">
               <div class="payment-app-inner">
                 <span class="pay-app-icon" style="background: #f3e5f5; color: #5f259f;">PhPe</span>
                 <span class="pay-app-title">PhonePe</span>
+              </div>
+            </label>
+            <label class="payment-app-card" id="payCard-gpay">
+              <input type="radio" name="paymentAppChoice" value="Google Pay (GPay)" onchange="selectPaymentApp('Google Pay (GPay)', 'payCard-gpay')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #e8f5e9; color: #2e7d32;">GPay</span>
+                <span class="pay-app-title">Google Pay</span>
               </div>
             </label>
             <label class="payment-app-card" id="payCard-paytm">
@@ -642,16 +644,71 @@
           </div>
         </div>
 
+        <!-- Official PhonePe UPI QR Code Showcase -->
+        <div class="checkout-qr-showcase" id="checkoutQrShowcase">
+          <div class="checkout-qr-card">
+            <div class="checkout-qr-header">
+              <div class="qr-brand-tag">
+                <span class="qr-secure-dot"></span>
+                <span>Official UPI Merchant QR</span>
+              </div>
+              <div class="qr-merchant-name">Gnapakalu by megha</div>
+              <div class="qr-terminal-id">Terminal 1-Q294289871 &bull; Q294289871@ybl</div>
+            </div>
+
+            <div class="checkout-qr-img-wrap">
+              <img src="assets/images/gnapakalu_phonepe_qr.jpg" alt="Gnapakalu by megha PhonePe UPI QR Code" class="checkout-qr-img" id="checkoutQrImage">
+            </div>
+
+            <div class="checkout-qr-amount-pill">
+              <span class="qr-pay-text">Scan & Pay Exact Amount:</span>
+              <span class="qr-pay-amount" id="checkoutQrPayAmount">₹0</span>
+            </div>
+
+            <div class="checkout-qr-apps-badge">
+              <span>Scan with any UPI app on your phone:</span>
+              <div class="qr-apps-icons">
+                <span class="qr-app-pill app-phonepe">PhonePe</span>
+                <span class="qr-app-pill app-gpay">Google Pay</span>
+                <span class="qr-app-pill app-paytm">Paytm</span>
+                <span class="qr-app-pill app-bhim">BHIM</span>
+              </div>
+            </div>
+
+            <a id="checkoutDirectUpiBtn" href="upi://pay?pa=Q294289871@ybl&pn=Gnapakalu+by+megha&mode=02" class="checkout-direct-upi-btn">
+              <span>📱 Open UPI App Directly on Mobile</span>
+            </a>
+
+            <div class="checkout-qr-steps-guide">
+              <div class="qr-step-item">
+                <span class="qr-step-num">1</span>
+                <span>Scan QR & pay <strong id="checkoutQrStepAmount">₹0</strong> on PhonePe / GPay / Paytm</span>
+              </div>
+              <div class="qr-step-item">
+                <span class="qr-step-num">2</span>
+                <span>Copy the <strong>12-digit UTR / UPI Ref No.</strong> from payment receipt</span>
+              </div>
+              <div class="qr-step-item">
+                <span class="qr-step-num">3</span>
+                <span>Enter it in the box below and click <strong>Place Order & Submit Payment</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Payment UTR / Transaction ID Input -->
         <div class="checkout-utr-section" id="checkoutUtrSection">
+          <div class="utr-section-heading">
+            <span>📝 Enter Payment Confirmation Details</span>
+          </div>
           <div class="checkout-form-grid" style="margin-top: 0.25rem;">
             <div class="checkout-field-col">
               <label for="custUtrNumber" class="checkout-label">
-                <span>Payment UTR / UPI Ref No.</span>
+                <span>Payment UTR / UPI Ref No. (12 Digits)</span>
                 <span class="req-star" id="utrReqStar">*</span>
               </label>
               <input type="text" id="custUtrNumber" class="checkout-input" placeholder="e.g. 329182749102 (12 digits)" maxlength="24" autocomplete="off">
-              <small style="font-size: 0.72rem; color: var(--color-text-muted);">From your payment app receipt</small>
+              <small style="font-size: 0.72rem; color: var(--color-text-muted);">From your PhonePe / GPay / Paytm payment screen</small>
             </div>
             <div class="checkout-field-col">
               <label for="custTransactionId" class="checkout-label">
@@ -659,7 +716,7 @@
                 <span style="font-size: 0.72rem; color: var(--color-text-muted);">(Optional / App Ref)</span>
               </label>
               <input type="text" id="custTransactionId" class="checkout-input" placeholder="e.g. T261011195821..." maxlength="35" autocomplete="off">
-              <small style="font-size: 0.72rem; color: var(--color-text-muted);">UPI Transaction ID / Ref</small>
+              <small style="font-size: 0.72rem; color: var(--color-text-muted);">UPI Transaction ID / Reference</small>
             </div>
           </div>
         </div>

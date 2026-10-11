@@ -1233,9 +1233,20 @@ function updateCheckoutSummaryUI() {
     finalTotalElem.textContent = formatINR(grandTotal);
   }
 
+  // Sync QR Code amount displays & mobile UPI intent link
+  const qrPayAmountElem = document.getElementById('checkoutQrPayAmount');
+  const qrStepAmountElem = document.getElementById('checkoutQrStepAmount');
+  const directUpiBtn = document.getElementById('checkoutDirectUpiBtn');
+
+  if (qrPayAmountElem) qrPayAmountElem.textContent = formatINR(grandTotal);
+  if (qrStepAmountElem) qrStepAmountElem.textContent = formatINR(grandTotal);
+  if (directUpiBtn) {
+    directUpiBtn.href = `upi://pay?pa=Q294289871@ybl&pn=Gnapakalu+by+megha&am=${grandTotal}&cu=INR&tn=Order_Payment&mode=02`;
+  }
+
   if (btnPlaceOrder) {
     btnPlaceOrder.innerHTML = `
-      <span>Place Order (${formatINR(grandTotal)})</span>
+      <span>Place Order & Submit Payment (${formatINR(grandTotal)})</span>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
@@ -1252,14 +1263,25 @@ function selectPaymentApp(appName, cardId) {
     const radio = card.querySelector('input[type="radio"]');
     if (radio) radio.checked = true;
   }
+
+  const qrShowcase = document.getElementById('checkoutQrShowcase');
   const utrReqStar = document.getElementById('utrReqStar');
   const utrInput = document.getElementById('custUtrNumber');
+
   if (appName === 'Cash on Delivery (COD)') {
+    if (qrShowcase) qrShowcase.style.display = 'none';
     if (utrReqStar) utrReqStar.style.display = 'none';
-    if (utrInput) utrInput.placeholder = 'Optional for COD orders';
+    if (utrInput) {
+      utrInput.placeholder = 'Optional for COD orders';
+      utrInput.removeAttribute('required');
+    }
   } else {
+    if (qrShowcase) qrShowcase.style.display = 'block';
     if (utrReqStar) utrReqStar.style.display = 'inline';
-    if (utrInput) utrInput.placeholder = 'e.g. 329182749102 (12 digits)';
+    if (utrInput) {
+      utrInput.placeholder = 'e.g. 329182749102 (12 digits)';
+      utrInput.setAttribute('required', 'true');
+    }
   }
 }
 
@@ -1386,12 +1408,23 @@ function submitCustomerOrder(event) {
     return;
   }
 
-  const utrNumber = document.getElementById('custUtrNumber')?.value.trim() || '';
-  const transactionId = document.getElementById('custTransactionId')?.value.trim() || '';
+  const rawUtr = document.getElementById('custUtrNumber')?.value || '';
+  const utrNumber = rawUtr.trim().replace(/\s+/g, '');
+  const transactionId = (document.getElementById('custTransactionId')?.value || '').trim();
 
   if (selectedPaymentApp !== 'Cash on Delivery (COD)' && (!utrNumber || utrNumber.length < 6)) {
-    showToast('Please enter the 12-digit Payment UTR / UPI Ref from your payment app');
-    document.getElementById('custUtrNumber')?.focus();
+    showToast('⚠️ Please scan the QR, complete payment & enter the 12-digit UTR number');
+    const utrEl = document.getElementById('custUtrNumber');
+    if (utrEl) {
+      utrEl.focus();
+      utrEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      utrEl.style.borderColor = '#e11d48';
+      utrEl.style.boxShadow = '0 0 0 3px rgba(225, 29, 72, 0.2)';
+      setTimeout(() => {
+        utrEl.style.borderColor = '';
+        utrEl.style.boxShadow = '';
+      }, 4000);
+    }
     return;
   }
 
