@@ -2740,3 +2740,171 @@ a {
   }
 }
 
+/* ===============================================================
+   OWNER PIN AUTHENTICATION & MULTI-DEVICE CLOUD SYNC
+   =============================================================== */
+.mgmt-pin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 6, 25, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mgmt-pin-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mgmt-pin-box {
+  background: #ffffff;
+  width: 100%;
+  max-width: 440px;
+  border-radius: 24px;
+  padding: 2.25rem 2rem;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  animation: mgmtModalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mgmt-pin-icon-wrap {
+  width: 60px;
+  height: 60px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
+}
+
+.mgmt-pin-title {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.4rem;
+}
+
+.mgmt-pin-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+}
+
+.mgmt-pin-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-pin-input {
+  width: 100%;
+  padding: 0.85rem 3rem 0.85rem 1.25rem;
+  font-size: 1.4rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-weight: 800;
+  border-radius: 14px;
+  border: 2px solid var(--color-border);
+  background: #fdfafc;
+  color: var(--color-primary-dark);
+  transition: var(--transition-fast);
+}
+
+.mgmt-pin-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+}
+
+.mgmt-pin-toggle-visibility {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+}
+
+.mgmt-pin-toggle-visibility:hover {
+  opacity: 1;
+}
+
+.mgmt-pin-error {
+  color: #e11d48;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: #fff1f2;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #fecdd3;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.mgmt-pin-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.mgmt-pin-actions button {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.mgmt-pin-footer-hint {
+  font-size: 0.75rem;
+  color: #9d8ea8;
+  margin-top: 1.25rem;
+  border-top: 1px dashed var(--color-border);
+  padding-top: 0.85rem;
+}
+
+.mgmt-change-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-change-pin-btn:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  transform: translateY(-1px);
+}
+
+

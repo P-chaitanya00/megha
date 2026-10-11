@@ -228,6 +228,7 @@ function formatINR(amount) {
 
 // INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
+  syncPinFromCloud();
   renderDrawerCategories();
   updateCartUI();
   updateWishlistCount();
@@ -902,13 +903,15 @@ function closeCart() {
   document.body.style.overflow = '';
 }
 
-// Global escape key listener to close cart drawer, quick view modal and management portal
+// Global escape key listener to close drawers and modals
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'Esc') {
     closeCart();
     closeSidebarDrawer();
     closeModal();
     closeManagementPortal();
+    closePinModal();
+    closeChangePinModal();
   }
 });
 
@@ -1129,11 +1132,182 @@ function showToast(message) {
 }
 
 // ===============================================================
-// STORE OWNER MANAGEMENT PORTAL ENGINE (ADD, EDIT & INVENTORY)
+// STORE OWNER MANAGEMENT PORTAL PIN & CLOUD CROSS-DEVICE SYNC
+// (Isolated dedicated cloud endpoint, 100% separate from KAFF)
 // ===============================================================
+const CLOUD_KV_APP_KEY = '0l303heb';
+const CLOUD_PIN_KEY = 'portal_pin';
+const DEFAULT_MGMT_PIN = '1234';
+
+let currentMgmtPin = localStorage.getItem('gnapakalu_mgmt_pin') || DEFAULT_MGMT_PIN;
+let isOwnerAuthenticated = false;
 let mgmtUploadedImageDataUrl = '';
 
+// Synchronize PIN with Cloud so changes reflect immediately across all devices
+async function syncPinFromCloud() {
+  try {
+    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${CLOUD_KV_APP_KEY}/${CLOUD_PIN_KEY}`);
+    if (res.ok) {
+      const cloudPin = await res.json();
+      if (cloudPin && typeof cloudPin === 'string' && cloudPin.trim()) {
+        currentMgmtPin = cloudPin.trim();
+        localStorage.setItem('gnapakalu_mgmt_pin', currentMgmtPin);
+      }
+    }
+  } catch (err) {
+    console.warn('Using offline/cached PIN:', err);
+  }
+}
+
+// MANAGEMENT PORTAL ENTRY POINT
 function openManagementPortal() {
+  if (isOwnerAuthenticated) {
+    showPortalModal();
+  } else {
+    syncPinFromCloud();
+    openPinModal();
+  }
+}
+
+function openPinModal() {
+  const overlay = document.getElementById('mgmtPinOverlay');
+  const input = document.getElementById('mgmtPinInput');
+  const errorMsg = document.getElementById('mgmtPinErrorMsg');
+  if (errorMsg) errorMsg.style.display = 'none';
+  if (input) {
+    input.value = '';
+    input.type = 'password';
+  }
+  if (overlay) overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => input?.focus(), 150);
+}
+
+function closePinModal() {
+  const overlay = document.getElementById('mgmtPinOverlay');
+  if (overlay) overlay.classList.remove('open');
+  if (!isOwnerAuthenticated) {
+    document.body.style.overflow = '';
+  }
+}
+
+function closePinModalOnBackdrop(e) {
+  if (e.target.id === 'mgmtPinOverlay') {
+    closePinModal();
+  }
+}
+
+function togglePinVisibility() {
+  const input = document.getElementById('mgmtPinInput');
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+async function verifyManagementPin(e) {
+  e.preventDefault();
+  const input = document.getElementById('mgmtPinInput');
+  const errorMsg = document.getElementById('mgmtPinErrorMsg');
+  const enteredPin = input ? input.value.trim() : '';
+
+  // Double-check with cloud to make sure we have the latest PIN from other devices
+  await syncPinFromCloud();
+
+  if (enteredPin === currentMgmtPin) {
+    isOwnerAuthenticated = true;
+    closePinModal();
+    showPortalModal();
+    showToast('Authenticated! Welcome to Store Management');
+  } else {
+    if (errorMsg) {
+      errorMsg.textContent = 'Incorrect PIN. Please try again.';
+      errorMsg.style.display = 'block';
+    }
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+  }
+}
+
+// CHANGE PIN FUNCTIONS
+function openChangePinModal() {
+  const overlay = document.getElementById('mgmtChangePinOverlay');
+  const form = document.getElementById('mgmtChangePinForm');
+  const errorMsg = document.getElementById('mgmtChangePinErrorMsg');
+  if (form) form.reset();
+  if (errorMsg) errorMsg.style.display = 'none';
+  if (overlay) overlay.classList.add('open');
+}
+
+function closeChangePinModal() {
+  const overlay = document.getElementById('mgmtChangePinOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function closeChangePinOnBackdrop(e) {
+  if (e.target.id === 'mgmtChangePinOverlay') {
+    closeChangePinModal();
+  }
+}
+
+async function handleChangePinSubmit(e) {
+  e.preventDefault();
+  const currentInput = document.getElementById('mgmtCurrentPinInput');
+  const newInput = document.getElementById('mgmtNewPinInput');
+  const confirmInput = document.getElementById('mgmtConfirmPinInput');
+  const errorMsg = document.getElementById('mgmtChangePinErrorMsg');
+  const submitBtn = document.getElementById('mgmtSavePinBtn');
+
+  const curr = currentInput ? currentInput.value.trim() : '';
+  const next = newInput ? newInput.value.trim() : '';
+  const conf = confirmInput ? confirmInput.value.trim() : '';
+
+  if (curr !== currentMgmtPin) {
+    if (errorMsg) {
+      errorMsg.textContent = 'Current PIN is incorrect.';
+      errorMsg.style.display = 'block';
+    }
+    return;
+  }
+
+  if (next.length < 4) {
+    if (errorMsg) {
+      errorMsg.textContent = 'New PIN must be at least 4 digits.';
+      errorMsg.style.display = 'block';
+    }
+    return;
+  }
+
+  if (next !== conf) {
+    if (errorMsg) {
+      errorMsg.textContent = 'New PIN and Confirm PIN do not match.';
+      errorMsg.style.display = 'block';
+    }
+    return;
+  }
+
+  // Update in local state and storage
+  currentMgmtPin = next;
+  localStorage.setItem('gnapakalu_mgmt_pin', currentMgmtPin);
+
+  // Sync to Cloud KV so all other devices can access with the new PIN
+  if (submitBtn) submitBtn.textContent = 'Syncing...';
+  try {
+    await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${CLOUD_KV_APP_KEY}/${CLOUD_PIN_KEY}/${encodeURIComponent(currentMgmtPin)}`, {
+      method: 'POST'
+    });
+  } catch (err) {
+    console.warn('Cloud sync warning:', err);
+  } finally {
+    if (submitBtn) submitBtn.textContent = 'Save & Sync PIN';
+  }
+
+  closeChangePinModal();
+  showToast(`Access PIN updated to ${currentMgmtPin} and synced live across devices! 🔐`);
+}
+
+// SHOW MANAGEMENT PORTAL DASHBOARD
+function showPortalModal() {
   populateMgmtCategories();
   updateMgmtLiveBadge();
   renderMgmtProductsTable();
