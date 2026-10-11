@@ -233,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartUI();
   updateWishlistCount();
   updateMgmtLiveBadge();
+  updateMgmtOrdersCount();
   setupEventListeners();
 });
 
@@ -1242,6 +1243,83 @@ function updateCheckoutSummaryUI() {
   }
 }
 
+// Payment App Selection
+function selectPaymentApp(appName, cardId) {
+  document.querySelectorAll('.payment-app-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(cardId);
+  if (card) {
+    card.classList.add('active');
+    const radio = card.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+  }
+}
+
+// Dispatches order details to Sridevigummadi37@gmail.com via Backend Serverless & FormSubmit API
+async function dispatchOrderEmail(order) {
+  const targetEmail = 'Sridevigummadi37@gmail.com';
+  
+  // 1. Try Vercel Serverless Backend Endpoint /api/send-order
+  try {
+    const res = await fetch('/api/send-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        console.log('Order notification successfully dispatched to', targetEmail);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('Backend serverless endpoint fallback to direct FormSubmit:', err);
+  }
+
+  // 2. Direct Resilient Fallback to FormSubmit AJAX endpoint
+  try {
+    const itemsList = Array.isArray(order.items)
+      ? order.items.map(i => `${i.name} (${i.selectedVariant || i.category || 'Standard'}) x ${i.qty} = ₹${i.total}`).join('\n')
+      : String(order.items || '');
+
+    const fallbackRes = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted}`,
+        _template: 'table',
+        _captcha: 'false',
+        Store: 'Gnapakalu by Megha',
+        Order_ID: order.orderId,
+        Order_Date_Time: order.orderDate,
+        Payment_App_Used: order.paymentApp,
+        Payment_Status: order.paymentStatus,
+        Customer_Name: order.customerName,
+        Mobile_Number: order.customerPhone,
+        House_Number: order.houseNo,
+        Street_Area_Address: order.address,
+        Landmark: order.landmark,
+        State: order.state,
+        Pincode: order.pincode,
+        Ordered_Items: itemsList,
+        Bag_Subtotal: order.subtotalFormatted,
+        Promotional_Discount: order.discountFormatted,
+        Courier_Zone_and_Charge: `${order.shippingZone} (${order.courierChargeFormatted})`,
+        TOTAL_AMOUNT_PAID: order.grandTotalFormatted
+      })
+    });
+    const resJson = await fallbackRes.json();
+    console.log('Order email dispatched to', targetEmail, resJson);
+    return true;
+  } catch (e) {
+    console.error('Email dispatch error:', e);
+    return false;
+  }
+}
+
 // Order Submission & Verification
 function submitCustomerOrder(event) {
   if (event) event.preventDefault();
@@ -1258,6 +1336,7 @@ function submitCustomerOrder(event) {
   const landmark = document.getElementById('custLandmark')?.value.trim();
   const state = document.getElementById('custState')?.value.trim();
   const pincode = document.getElementById('custPincode')?.value.trim();
+  const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'Google Pay (GPay)';
 
   // Validations
   if (!name || name.length < 2) {
@@ -1329,6 +1408,54 @@ function submitCustomerOrder(event) {
   const grandTotal = Math.max(0, subtotal - discount + shippingInfo.fee);
   const orderedItemsBackup = [...cart];
 
+  const nowFormatted = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+
+  // 2. CONSTRUCT COMPLETE ORDER OBJECT
+  const orderPayload = {
+    orderId: `#GNAP-${orderNum}`,
+    orderDate: nowFormatted,
+    customerName: name,
+    customerPhone: phone,
+    houseNo: houseNo,
+    address: address,
+    landmark: landmark,
+    state: state,
+    pincode: pincode,
+    shippingZone: shippingInfo.label,
+    courierCharge: shippingInfo.fee,
+    courierChargeFormatted: formatINR(shippingInfo.fee),
+    items: orderedItemsBackup.map(i => ({
+      id: i.id,
+      name: i.name,
+      category: i.category,
+      selectedVariant: i.selectedVariant || '',
+      qty: i.qty,
+      price: i.price,
+      total: i.price * i.qty
+    })),
+    subtotal: subtotal,
+    subtotalFormatted: formatINR(subtotal),
+    discount: discount,
+    discountFormatted: discount > 0 ? `-${formatINR(discount)} (${appliedPromo ? appliedPromo.code : ''})` : '₹0',
+    grandTotal: grandTotal,
+    grandTotalFormatted: formatINR(grandTotal),
+    paymentApp: selectedPaymentApp,
+    paymentStatus: 'Payment Completed / Order Placed'
+  };
+
+  // 3. PERSIST ORDER IN LOCALSTORAGE FOR STORE OWNER TRACKING
+  try {
+    let allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+    allOrders.unshift(orderPayload);
+    localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
+    updateMgmtOrdersCount();
+  } catch (errStorage) {
+    console.warn('Storage warning for orders:', errStorage);
+  }
+
+  // 4. AUTOMATICALLY DISPATCH EMAIL ALERT TO Sridevigummadi37@gmail.com
+  dispatchOrderEmail(orderPayload);
+
   // Close checkout modal & clear cart
   closeCheckoutModal();
   cart = [];
@@ -1345,6 +1472,8 @@ function submitCustomerOrder(event) {
     `${houseNo}, ${address}\n` +
     `Landmark: ${landmark}\n` +
     `State: ${state} - PIN: ${pincode}\n\n` +
+    `*💳 Payment Method / App:* ${selectedPaymentApp}\n` +
+    `*Payment Status:* Payment Completed\n\n` +
     `*📦 Ordered Items:*\n` +
     orderedItemsBackup.map(i => `• ${i.name} (${i.selectedVariant || i.category}) x ${i.qty} = ${formatINR(i.price * i.qty)}`).join('\n') +
     `\n\n*💰 Payment Summary:*\n` +
@@ -1364,7 +1493,7 @@ function submitCustomerOrder(event) {
           ✓
         </div>
         <h2 style="font-family: var(--font-serif); font-size: 1.85rem; margin-bottom: 0.35rem; color: var(--color-text-main);">Order Placed Successfully!</h2>
-        <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+        <p style="color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
           Thank you <strong>${name}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.
         </p>
         
@@ -1377,6 +1506,10 @@ function submitCustomerOrder(event) {
             <span style="color: var(--color-text-muted);">Contact:</span>
             <strong>+91 ${phone}</strong>
           </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted);">Payment App Used:</span>
+            <span class="mgmt-pay-app-pill">${selectedPaymentApp}</span>
+          </div>
           <div style="margin-bottom: 0.45rem;">
             <span style="color: var(--color-text-muted); display: block; margin-bottom: 0.15rem;">Delivery Address:</span>
             <strong style="line-height: 1.4; display: block; color: var(--color-text-main);">
@@ -1387,9 +1520,14 @@ function submitCustomerOrder(event) {
             <span style="color: var(--color-text-muted);">Courier Zone (${shippingInfo.label}):</span>
             <strong>${formatINR(shippingInfo.fee)}</strong>
           </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
             <span style="color: var(--color-text-muted);">Total Paid:</span>
             <strong style="color: var(--color-primary-dark); font-size: 1.1rem;">${formatINR(grandTotal)}</strong>
+          </div>
+
+          <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fdf2f8; border-radius: var(--radius-sm); border: 1px solid #fbcfe8; font-size: 0.76rem; color: #9d174d; display: flex; align-items: center; gap: 0.35rem;">
+            <span>📬</span>
+            <span>Order details & payment report dispatched to: <strong>Sridevigummadi37@gmail.com</strong></span>
           </div>
         </div>
 
@@ -1612,6 +1750,7 @@ async function handleChangePinSubmit(e) {
 function showPortalModal() {
   populateMgmtCategories();
   updateMgmtLiveBadge();
+  updateMgmtOrdersCount();
   renderMgmtProductsTable();
   const overlay = document.getElementById('mgmtModalOverlay');
   if (overlay) overlay.classList.add('open');
@@ -1633,21 +1772,154 @@ function closeManagementPortalOnBackdrop(e) {
 function switchMgmtTab(tab) {
   const formContent = document.getElementById('mgmtTabContentForm');
   const listContent = document.getElementById('mgmtTabContentList');
+  const ordersContent = document.getElementById('mgmtTabContentOrders');
   const formBtn = document.getElementById('mgmtTabBtnForm');
   const listBtn = document.getElementById('mgmtTabBtnList');
+  const ordersBtn = document.getElementById('mgmtTabBtnOrders');
+
+  if (formContent) formContent.style.display = 'none';
+  if (listContent) listContent.style.display = 'none';
+  if (ordersContent) ordersContent.style.display = 'none';
+
+  if (formBtn) formBtn.classList.remove('active');
+  if (listBtn) listBtn.classList.remove('active');
+  if (ordersBtn) ordersBtn.classList.remove('active');
 
   if (tab === 'form') {
     if (formContent) formContent.style.display = 'block';
-    if (listContent) listContent.style.display = 'none';
     if (formBtn) formBtn.classList.add('active');
-    if (listBtn) listBtn.classList.remove('active');
+  } else if (tab === 'orders') {
+    if (ordersContent) ordersContent.style.display = 'block';
+    if (ordersBtn) ordersBtn.classList.add('active');
+    renderMgmtOrdersTable();
   } else {
-    if (formContent) formContent.style.display = 'none';
     if (listContent) listContent.style.display = 'block';
-    if (formBtn) formBtn.classList.remove('active');
     if (listBtn) listBtn.classList.add('active');
     renderMgmtProductsTable();
   }
+}
+
+function updateMgmtOrdersCount() {
+  let allOrders = [];
+  try {
+    allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+  } catch (e) {}
+  const badge = document.getElementById('mgmtOrdersCountBadge');
+  if (badge) badge.textContent = allOrders.length;
+}
+
+function renderMgmtOrdersTable() {
+  const container = document.getElementById('mgmtOrdersTableWrapper');
+  if (!container) return;
+
+  let allOrders = [];
+  try {
+    allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+  } catch (e) {}
+
+  updateMgmtOrdersCount();
+
+  const query = (document.getElementById('mgmtOrderSearchInput')?.value || '').trim().toLowerCase();
+
+  let list = allOrders;
+  if (query) {
+    list = list.filter(o =>
+      (o.orderId && o.orderId.toLowerCase().includes(query)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(query)) ||
+      (o.customerPhone && o.customerPhone.includes(query)) ||
+      (o.pincode && o.pincode.includes(query)) ||
+      (o.paymentApp && o.paymentApp.toLowerCase().includes(query))
+    );
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 3rem 1.5rem; color: var(--color-text-muted);">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📋</div>
+        <h4>${query ? 'No orders match your search' : 'No Customer Orders Yet'}</h4>
+        <p style="font-size: 0.85rem; margin-top: 0.25rem;">
+          ${query ? 'Try searching by a different name, phone, or Order ID.' : 'When customers place orders, full details & payment app info will appear here and email automatically to Sridevigummadi37@gmail.com.'}
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="mgmt-orders-table">
+      <thead>
+        <tr>
+          <th>Order Details</th>
+          <th>Customer & Contact</th>
+          <th>Delivery Address</th>
+          <th>Items Ordered</th>
+          <th>Payment App & Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(o => {
+          const itemsText = Array.isArray(o.items)
+            ? o.items.map(i => `• ${i.name} (Qty: ${i.qty}) — ₹${i.total}`).join('<br>')
+            : String(o.items || '');
+          const waPhone = String(o.customerPhone || '').replace(/\D/g, '');
+          return `
+            <tr>
+              <td>
+                <span class="mgmt-order-id-badge">${o.orderId}</span>
+                <div class="mgmt-order-time">${o.orderDate}</div>
+              </td>
+              <td>
+                <strong>${o.customerName}</strong>
+                <div style="margin-top: 0.2rem;">
+                  <a href="https://wa.me/91${waPhone}" target="_blank" style="color: #25D366; font-weight: 700; text-decoration: none; font-size: 0.82rem;">
+                    💬 +91 ${o.customerPhone}
+                  </a>
+                </div>
+              </td>
+              <td style="max-width: 200px; font-size: 0.82rem; line-height: 1.4;">
+                ${o.houseNo}, ${o.address}<br>
+                <span style="color: var(--color-text-muted);">Near ${o.landmark}</span><br>
+                <strong>${o.state} - ${o.pincode}</strong>
+              </td>
+              <td>
+                <div class="mgmt-order-items-list">${itemsText}</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.3rem;">
+                  Courier: ${o.shippingZone} (${o.courierChargeFormatted || '₹' + o.courierCharge})
+                </div>
+              </td>
+              <td>
+                <span class="mgmt-pay-app-pill">${o.paymentApp || 'UPI App'}</span>
+                <div style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary-dark); margin-top: 0.25rem;">
+                  ${o.grandTotalFormatted || '₹' + o.grandTotal}
+                </div>
+              </td>
+              <td>
+                <button type="button" class="mgmt-resend-email-btn" onclick="resendOrderEmail('${o.orderId}')" title="Re-dispatch notification email to Sridevigummadi37@gmail.com">
+                  📧 Re-send Email
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function resendOrderEmail(orderId) {
+  let allOrders = [];
+  try {
+    allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+  } catch (e) {}
+  const order = allOrders.find(o => o.orderId === orderId);
+  if (!order) {
+    showToast('Order not found!');
+    return;
+  }
+  showToast(`Sending email alert for ${orderId} to Sridevigummadi37@gmail.com...`);
+  await dispatchOrderEmail(order);
+  showToast(`Email dispatched to Sridevigummadi37@gmail.com! ✓`);
 }
 
 function populateMgmtCategories() {

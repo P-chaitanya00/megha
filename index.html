@@ -600,6 +600,46 @@
               Enter your <strong>6-digit Pincode</strong> to calculate applicable courier charge.
             </div>
           </div>
+        <!-- Payment App / Method Selection -->
+        <div class="checkout-payment-section">
+          <label class="checkout-label">Payment App / Method Used <span class="req-star">*</span></label>
+          <div class="payment-apps-grid">
+            <label class="payment-app-card active" id="payCard-gpay">
+              <input type="radio" name="paymentAppChoice" value="Google Pay (GPay)" checked onchange="selectPaymentApp('Google Pay (GPay)', 'payCard-gpay')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #e8f5e9; color: #2e7d32;">GPay</span>
+                <span class="pay-app-title">Google Pay</span>
+              </div>
+            </label>
+            <label class="payment-app-card" id="payCard-phonepe">
+              <input type="radio" name="paymentAppChoice" value="PhonePe" onchange="selectPaymentApp('PhonePe', 'payCard-phonepe')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #f3e5f5; color: #5f259f;">PhPe</span>
+                <span class="pay-app-title">PhonePe</span>
+              </div>
+            </label>
+            <label class="payment-app-card" id="payCard-paytm">
+              <input type="radio" name="paymentAppChoice" value="Paytm" onchange="selectPaymentApp('Paytm', 'payCard-paytm')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #e1f5fe; color: #00b9f1;">Paytm</span>
+                <span class="pay-app-title">Paytm</span>
+              </div>
+            </label>
+            <label class="payment-app-card" id="payCard-other">
+              <input type="radio" name="paymentAppChoice" value="BHIM / Any UPI App" onchange="selectPaymentApp('BHIM / Any UPI App', 'payCard-other')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #fff8e1; color: #f57f17;">UPI</span>
+                <span class="pay-app-title">Other UPI</span>
+              </div>
+            </label>
+            <label class="payment-app-card" id="payCard-cod">
+              <input type="radio" name="paymentAppChoice" value="Cash on Delivery (COD)" onchange="selectPaymentApp('Cash on Delivery (COD)', 'payCard-cod')">
+              <div class="payment-app-inner">
+                <span class="pay-app-icon" style="background: #f1f5f9; color: #475569;">COD</span>
+                <span class="pay-app-title">Cash on Delivery</span>
+              </div>
+            </label>
+          </div>
         </div>
 
         <!-- Price Summary Breakdown -->
@@ -740,6 +780,9 @@
         <button type="button" class="mgmt-tab-btn" id="mgmtTabBtnList" onclick="switchMgmtTab('list')">
           <span>📦 Manage Live Products & Stock (<span id="mgmtLiveCountBadge">0</span>)</span>
         </button>
+        <button type="button" class="mgmt-tab-btn" id="mgmtTabBtnOrders" onclick="switchMgmtTab('orders')">
+          <span>📋 Live Customer Orders (<span id="mgmtOrdersCountBadge">0</span>)</span>
+        </button>
       </div>
 
       <!-- TAB 1: ADD & EDIT PRODUCT FORM -->
@@ -875,6 +918,29 @@
             🔄 Reset to Original 6 Products
           </button>
           <span style="font-size: 0.8rem; color: var(--color-text-muted);">Changes save and reflect on the live website immediately.</span>
+        </div>
+      </div>
+
+      <!-- TAB 3: LIVE CUSTOMER ORDERS MANAGER -->
+      <div class="mgmt-tab-content" id="mgmtTabContentOrders" style="display: none;">
+        <div class="mgmt-inventory-controls">
+          <input type="text" id="mgmtOrderSearchInput" class="mgmt-input" placeholder="Search orders by customer name, phone, order ID..." oninput="renderMgmtOrdersTable()">
+          <div style="font-size: 0.82rem; color: var(--color-primary-dark); font-weight: 700; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
+            <span>📬 Auto-Email Server:</span>
+            <span style="background: #fdf2f8; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); border: 1px solid #fbcfe8; color: #be185d;">Sridevigummadi37@gmail.com</span>
+          </div>
+        </div>
+
+        <div class="mgmt-inventory-container">
+          <div id="mgmtOrdersTableWrapper">
+            <!-- Dynamically populated customer order rows -->
+          </div>
+        </div>
+
+        <div class="mgmt-inventory-footer">
+          <span style="font-size: 0.8rem; color: var(--color-text-muted);">
+            All completed customer orders are automatically emailed to <strong>Sridevigummadi37@gmail.com</strong> with items, customer address, payment app & total amount.
+          </span>
         </div>
       </div>
     </div>

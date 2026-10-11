@@ -1,0 +1,88 @@
+// Vercel Serverless Function: /api/send-order
+// Dispatches order details to Sridevigummadi37@gmail.com for Gnapakalu by Megha
+
+module.exports = async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed. Use POST.' });
+  }
+
+  try {
+    const order = req.body;
+
+    if (!order || !order.orderId) {
+      return res.status(400).json({ success: false, error: 'Invalid order payload' });
+    }
+
+    const targetEmail = 'Sridevigummadi37@gmail.com';
+    const storeName = 'Gnapakalu by Megha';
+
+    // Format products list
+    const itemsList = Array.isArray(order.items)
+      ? order.items.map(i => `${i.name} (${i.selectedVariant || i.category || 'Standard'}) x ${i.qty} = ₹${i.price * i.qty}`).join('\n')
+      : String(order.items || '');
+
+    // Prepare email payload for FormSubmit
+    const emailPayload = {
+      _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + order.grandTotal}`,
+      _template: 'table',
+      _captcha: 'false',
+      Store: storeName,
+      Order_ID: order.orderId,
+      Order_Date_Time: order.orderDate || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+      Payment_App_Used: order.paymentApp || 'UPI App',
+      Payment_Status: 'Payment Completed / Order Placed',
+      Customer_Name: order.customerName,
+      Mobile_Number: order.customerPhone,
+      House_Flat_Number: order.houseNo,
+      Street_Area_Address: order.address,
+      Landmark: order.landmark,
+      State: order.state,
+      Pincode: order.pincode,
+      Ordered_Items: itemsList,
+      Bag_Subtotal: order.subtotalFormatted || '₹' + (order.subtotal || 0),
+      Promotional_Discount: order.discountFormatted || '₹' + (order.discount || 0),
+      Courier_Zone_and_Charge: `${order.shippingZone || 'All India'} (${order.courierChargeFormatted || '₹' + (order.courierCharge || 0)})`,
+      TOTAL_AMOUNT_PAID: order.grandTotalFormatted || '₹' + (order.grandTotal || 0)
+    };
+
+    // Forward to FormSubmit via server-side fetch with correct Origin/Referer
+    const formSubmitResponse = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': 'https://megha-rho.vercel.app/',
+        'Referer': 'https://megha-rho.vercel.app/'
+      },
+      body: JSON.stringify(emailPayload)
+    });
+
+    const formSubmitData = await formSubmitResponse.json();
+
+    return res.status(200).json({
+      success: true,
+      orderId: order.orderId,
+      recipient: targetEmail,
+      providerResponse: formSubmitData
+    });
+  } catch (error) {
+    console.error('Order email dispatch error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to dispatch order email'
+    });
+  }
+};

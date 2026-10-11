@@ -2083,6 +2083,145 @@ a {
   padding: 0.9rem;
 }
 
+/* Payment Apps Grid in Checkout Modal */
+.checkout-payment-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.payment-apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 0.55rem;
+}
+
+.payment-app-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: #fafafc;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.payment-app-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.payment-app-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.pay-app-icon {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.5px;
+}
+
+.pay-app-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  white-space: nowrap;
+}
+
+.payment-app-card:hover {
+  border-color: var(--color-primary);
+  background: #ffffff;
+}
+
+.payment-app-card.active {
+  border-color: var(--color-primary-dark);
+  background: #fdf4ff;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
+
+/* Orders Table Styling in Management Portal */
+.mgmt-orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.mgmt-orders-table th {
+  background: #f8fafc;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  text-align: left;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mgmt-orders-table td {
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  color: var(--color-text-main);
+}
+
+.mgmt-order-id-badge {
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  display: inline-block;
+  margin-bottom: 0.2rem;
+}
+
+.mgmt-order-time {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+.mgmt-order-items-list {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.mgmt-pay-app-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.mgmt-resend-email-btn {
+  background: #fdf2f8;
+  color: #be185d;
+  border: 1px solid #fbcfe8;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-resend-email-btn:hover {
+  background: #fce7f3;
+}
+
 @media (max-width: 640px) {
   .checkout-modal-container {
     padding: 1.5rem 1.15rem;
@@ -2090,6 +2229,9 @@ a {
   .checkout-form-grid {
     grid-template-columns: 1fr;
     gap: 0.85rem;
+  }
+  .payment-apps-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
