@@ -33,7 +33,7 @@ const ALL_CATEGORIES = [
   { name: 'New launches', gender: 'both' }
 ];
 
-const PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   {
     id: 'anti_heart_chain',
     name: '18K Gold Plated Heart Snake Chain Necklace',
@@ -41,6 +41,7 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 199,
     originalPrice: 399,
+    stock: 10,
     badge: '18K Anti-Tarnish',
     image: 'assets/products/golden_heart_necklace.jpg',
     description: 'Bespoke 18K gold-plated anti-tarnish heart pendant crafted on a sleek snake chain. Waterproof, sweatproof, and packaged with handwritten Gnapakalu by Megha card.',
@@ -53,6 +54,7 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 349,
     originalPrice: 549,
+    stock: 10,
     badge: 'Stainless Steel',
     image: 'assets/products/bamboo_bangle_black.jpg',
     description: 'Minimalist luxury bamboo segment joint bangle crafted in anti-tarnish waterproof stainless steel. Features a secure push clasp mechanism. Available in Jet Black, Rich Gold, and Ivory White.',
@@ -70,6 +72,7 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 799,
     originalPrice: 999, // 799 + 200
+    stock: 10,
     badge: 'Artisan Resin',
     image: 'assets/products/blood_resin_bangles.jpg',
     description: 'Handcrafted luxury crystal resin bangles infused with rich royal blood red pigment and sparkling 24K gold foil flakes. Smooth, glossy glass-like finish that never fades or tarnishes.',
@@ -82,6 +85,7 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 499,
     originalPrice: 699, // 499 + 200
+    stock: 10,
     badge: 'Anti-Tarnish',
     image: 'assets/products/ruby_emerald_flora_bangle.jpg',
     description: 'Exquisite 18K gold-finished cable snake chain bangle studded with alternating faceted ruby red and emerald green crystal petals. Premium anti-tarnish waterproof coating.',
@@ -94,6 +98,7 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 299,
     originalPrice: 499, // 299 + 200
+    stock: 10,
     badge: 'Bestseller',
     image: 'assets/products/tulip_pendant_red.jpg',
     description: 'Delicate blooming tulip teardrop pendant necklace in 18K gold chain with emerald crystal leaves. Choose between Crimson Red Tulip and Pastel Pink Tulip.',
@@ -110,12 +115,41 @@ const PRODUCTS = [
     gender: 'w',
     offerPrice: 399,
     originalPrice: 599, // 399 + 200
+    stock: 10,
     badge: 'Adjustable Bolo',
     image: 'assets/products/tulip_adjustable_bracelet.jpg',
     description: 'Elegant adjustable sliding bolo snake chain bracelet adorned with twin dangling crimson ruby tulip bud charms with emerald enamel accents. Fits all wrist sizes comfortably.',
     tags: ['Tulip Bracelet', 'Adjustable Bolo', 'Ruby Charms', 'Anti-Tarnish']
   }
 ];
+
+// LIVE PRODUCTS DATASET PERSISTED IN LOCALSTORAGE
+let PRODUCTS = [];
+try {
+  const savedProds = localStorage.getItem('gnapakalu_products');
+  if (savedProds) {
+    PRODUCTS = JSON.parse(savedProds);
+    // Ensure every product has a valid numeric stock
+    PRODUCTS.forEach(p => {
+      if (typeof p.stock !== 'number' || isNaN(p.stock)) {
+        p.stock = 10;
+      }
+    });
+  } else {
+    PRODUCTS = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+    localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+  }
+} catch (e) {
+  PRODUCTS = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+}
+
+function saveProducts() {
+  localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+  renderProducts();
+  renderDrawerCategories();
+  renderSubcategoryFilterChips();
+  updateMgmtLiveBadge();
+}
 
 // Active color selection state mapped by product ID
 const selectedProductVariants = {
@@ -197,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDrawerCategories();
   updateCartUI();
   updateWishlistCount();
+  updateMgmtLiveBadge();
   setupEventListeners();
 });
 
@@ -471,6 +506,8 @@ function renderProducts() {
     const discountPercent = Math.round((savings / item.originalPrice) * 100);
     const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
     const currentImg = activeVariant ? activeVariant.image : item.image;
+    const currentStock = (typeof item.stock === 'number') ? item.stock : 10;
+    const isOutOfStock = currentStock <= 0;
 
     const variantSwatchesHtml = item.variants ? `
       <div class="product-color-picker">
@@ -490,13 +527,16 @@ function renderProducts() {
     ` : '';
 
     return `
-      <div class="product-card" id="card-${item.id}">
+      <div class="product-card ${isOutOfStock ? 'sold-out' : ''}" id="card-${item.id}">
         <div class="product-image-container">
           <img src="${currentImg}" alt="${item.name}" id="img-${item.id}" class="product-img" loading="lazy" />
           
           <div class="card-badges">
-            <span class="badge-tag-discount">${discountPercent}% OFF</span>
-            <span class="badge-tag-feature">${item.badge}</span>
+            ${isOutOfStock 
+              ? `<span class="badge-tag-out-of-stock">OUT OF STOCK</span>` 
+              : `<span class="badge-tag-discount">${discountPercent}% OFF</span>`
+            }
+            <span class="badge-tag-feature">${item.badge || 'Handcrafted'}</span>
           </div>
 
           <button class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
@@ -516,7 +556,10 @@ function renderProducts() {
           <div>
             <div class="product-meta">
               <span class="product-material">${item.category}</span>
-              <span class="gender-pill">${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <span class="gender-pill">${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
+                <span class="stock-indicator-live ${isOutOfStock ? 'out-stock' : 'in-stock'}">${isOutOfStock ? 'Sold Out' : (currentStock + ' in stock')}</span>
+              </div>
             </div>
             
             <h3 class="product-title">${item.name}</h3>
@@ -532,14 +575,20 @@ function renderProducts() {
               </div>
             </div>
             
-            <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <path d="M16 10a4 4 0 0 1-8 0"></path>
-              </svg>
-              <span>Add</span>
-            </button>
+            ${isOutOfStock ? `
+              <button class="add-to-cart-btn out-of-stock" disabled title="Item Out of Stock">
+                <span>Out of Stock</span>
+              </button>
+            ` : `
+              <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span>Add</span>
+              </button>
+            `}
           </div>
         </div>
       </div>
@@ -651,6 +700,21 @@ function addToCart(productId, qty = 1, chosenVariant = null) {
   const product = PRODUCTS.find(p => p.id === productId);
   if (!product) return;
 
+  const currentStock = (typeof product.stock === 'number') ? product.stock : 10;
+  if (currentStock <= 0) {
+    showToast(`Sorry, "${product.name}" is currently Out of Stock!`);
+    return;
+  }
+
+  const existingInCartQty = cart
+    .filter(item => item.productId === product.id || item.id === product.id || item.id.startsWith(product.id + '_'))
+    .reduce((sum, item) => sum + item.qty, 0);
+
+  if (existingInCartQty + qty > currentStock) {
+    showToast(`Only ${currentStock} item(s) available in stock for this product!`);
+    return;
+  }
+
   const variant = chosenVariant || (product.variants ? (selectedProductVariants[productId] || product.variants[0]) : null);
   const cartItemId = variant ? `${product.id}_${variant.name.toLowerCase()}` : product.id;
   const displayName = variant ? `${product.name} (${variant.name})` : product.name;
@@ -681,6 +745,21 @@ function addToCart(productId, qty = 1, chosenVariant = null) {
 function updateCartQty(productId, delta) {
   const item = cart.find(i => i.id === productId);
   if (!item) return;
+
+  if (delta > 0) {
+    const product = PRODUCTS.find(p => p.id === item.productId || p.id === item.id || item.id.startsWith(p.id + '_'));
+    if (product) {
+      const currentStock = (typeof product.stock === 'number') ? product.stock : 10;
+      const existingInCartQty = cart
+        .filter(c => c.productId === product.id || c.id === product.id || c.id.startsWith(product.id + '_'))
+        .reduce((sum, c) => sum + c.qty, 0);
+
+      if (existingInCartQty + delta > currentStock) {
+        showToast(`Only ${currentStock} item(s) available in stock!`);
+        return;
+      }
+    }
+  }
 
   item.qty += delta;
   if (item.qty <= 0) {
@@ -823,12 +902,13 @@ function closeCart() {
   document.body.style.overflow = '';
 }
 
-// Global escape key listener to close cart drawer and quick view modal
+// Global escape key listener to close cart drawer, quick view modal and management portal
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'Esc') {
     closeCart();
     closeSidebarDrawer();
     closeModal();
+    closeManagementPortal();
   }
 });
 
@@ -865,6 +945,8 @@ function openQuickView(productId) {
 
   const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
   const currentImg = activeVariant ? activeVariant.image : item.image;
+  const currentStock = (typeof item.stock === 'number') ? item.stock : 10;
+  const isOutOfStock = currentStock <= 0;
 
   const variantPickerHtml = item.variants ? `
     <div style="margin: 1rem 0;">
@@ -893,7 +975,10 @@ function openQuickView(productId) {
         <img src="${currentImg}" alt="${item.name}" id="quickViewMainImg" class="quickview-img">
       </div>
       <div class="quickview-details">
-        <span class="gender-pill" style="margin-bottom: 0.5rem; display: inline-block;">${item.category} • ${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+          <span class="gender-pill">${item.category} • ${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
+          <span class="stock-indicator-live ${isOutOfStock ? 'out-stock' : 'in-stock'}">${isOutOfStock ? 'Out of Stock' : (currentStock + ' in stock')}</span>
+        </div>
         <h2>${item.name}</h2>
         
         <div class="quickview-price-box" style="margin: 0.75rem 0;">
@@ -918,9 +1003,15 @@ function openQuickView(productId) {
         </ul>
 
         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem;">
-          <button class="checkout-btn" style="flex-grow: 1; margin-top: 0;" onclick="addToCart('${item.id}'); closeModal();">
-            Add to Bag (${formatINR(item.offerPrice)})
-          </button>
+          ${isOutOfStock ? `
+            <button class="checkout-btn out-of-stock" disabled style="flex-grow: 1; margin-top: 0; background: #e2e8f0; color: #64748b; cursor: not-allowed; box-shadow: none;">
+              Out of Stock
+            </button>
+          ` : `
+            <button class="checkout-btn" style="flex-grow: 1; margin-top: 0;" onclick="addToCart('${item.id}'); closeModal();">
+              Add to Bag (${formatINR(item.offerPrice)})
+            </button>
+          `}
           
           <button class="icon-btn" onclick="toggleWishlist('${item.id}')" title="Save to Wishlist">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="${wishlist.includes(item.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
@@ -939,12 +1030,25 @@ function closeModal() {
   document.getElementById('modalOverlay')?.classList.remove('open');
 }
 
-// CHECKOUT SIMULATION
+// CHECKOUT SIMULATION WITH REAL-TIME STOCK INVENTORY REDUCTION
 function handleCheckout() {
   if (cart.length === 0) {
     showToast('Your bag is empty!');
     return;
   }
+
+  // 1. DEDUCT ITEM QUANTITY FROM PRODUCT STOCK ON SUCCESSFUL ORDER PLACEMENT
+  cart.forEach(cartItem => {
+    const baseId = cartItem.productId || cartItem.id.split('_')[0];
+    const prod = PRODUCTS.find(p => p.id === baseId || p.id === cartItem.id);
+    if (prod) {
+      const currentStock = (typeof prod.stock === 'number') ? prod.stock : 10;
+      prod.stock = Math.max(0, currentStock - cartItem.qty);
+    }
+  });
+
+  // Save stock deduction immediately to localStorage and refresh live views
+  saveProducts();
 
   const orderNum = Math.floor(100000 + Math.random() * 900000);
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -1022,4 +1126,370 @@ function showToast(message) {
     toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
   }, 2800);
+}
+
+// ===============================================================
+// STORE OWNER MANAGEMENT PORTAL ENGINE (ADD, EDIT & INVENTORY)
+// ===============================================================
+let mgmtUploadedImageDataUrl = '';
+
+function openManagementPortal() {
+  populateMgmtCategories();
+  updateMgmtLiveBadge();
+  renderMgmtProductsTable();
+  const overlay = document.getElementById('mgmtModalOverlay');
+  if (overlay) overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeManagementPortal() {
+  const overlay = document.getElementById('mgmtModalOverlay');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeManagementPortalOnBackdrop(e) {
+  if (e.target.id === 'mgmtModalOverlay') {
+    closeManagementPortal();
+  }
+}
+
+function switchMgmtTab(tab) {
+  const formContent = document.getElementById('mgmtTabContentForm');
+  const listContent = document.getElementById('mgmtTabContentList');
+  const formBtn = document.getElementById('mgmtTabBtnForm');
+  const listBtn = document.getElementById('mgmtTabBtnList');
+
+  if (tab === 'form') {
+    if (formContent) formContent.style.display = 'block';
+    if (listContent) listContent.style.display = 'none';
+    if (formBtn) formBtn.classList.add('active');
+    if (listBtn) listBtn.classList.remove('active');
+  } else {
+    if (formContent) formContent.style.display = 'none';
+    if (listContent) listContent.style.display = 'block';
+    if (formBtn) formBtn.classList.remove('active');
+    if (listBtn) listBtn.classList.add('active');
+    renderMgmtProductsTable();
+  }
+}
+
+function populateMgmtCategories() {
+  const select = document.getElementById('mgmtProdCategory');
+  if (!select) return;
+
+  const catNames = [...new Set(ALL_CATEGORIES.map(c => c.name))];
+  select.innerHTML = catNames.map(c => `<option value="${c}">${c}</option>`).join('') +
+    `<option value="__custom__">+ Enter Custom Category...</option>`;
+}
+
+function handleMgmtCategoryChange(val) {
+  const customInput = document.getElementById('mgmtProdCustomCat');
+  if (!customInput) return;
+  if (val === '__custom__') {
+    customInput.style.display = 'block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+    customInput.value = '';
+  }
+}
+
+function autoCalculateOriginalPrice(val) {
+  const offer = parseInt(val, 10);
+  const origInput = document.getElementById('mgmtProdOriginalPrice');
+  if (!isNaN(offer) && offer > 0 && origInput) {
+    origInput.value = offer + 200; // Formula: User price + 200
+  }
+}
+
+function handleMgmtImageUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    mgmtUploadedImageDataUrl = event.target.result;
+    showMgmtImagePreview(mgmtUploadedImageDataUrl);
+    const urlInput = document.getElementById('mgmtProdImageUrl');
+    if (urlInput) urlInput.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleMgmtImageUrl(url) {
+  if (url && url.trim()) {
+    mgmtUploadedImageDataUrl = url.trim();
+    showMgmtImagePreview(mgmtUploadedImageDataUrl);
+  }
+}
+
+function showMgmtImagePreview(src) {
+  const img = document.getElementById('mgmtImagePreviewImg');
+  const placeholder = document.getElementById('mgmtImagePreviewPlaceholder');
+  if (img && placeholder) {
+    img.src = src;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  }
+}
+
+function handleMgmtFormSubmit(e) {
+  e.preventDefault();
+
+  const editId = document.getElementById('mgmtEditProductId').value;
+  const name = document.getElementById('mgmtProdName').value.trim();
+  const gender = document.getElementById('mgmtProdGender').value;
+  let category = document.getElementById('mgmtProdCategory').value;
+
+  if (category === '__custom__') {
+    const customVal = document.getElementById('mgmtProdCustomCat').value.trim();
+    if (!customVal) {
+      showToast('Please type a name for your custom category');
+      return;
+    }
+    category = customVal;
+    if (!ALL_CATEGORIES.some(c => c.name.toLowerCase() === category.toLowerCase())) {
+      ALL_CATEGORIES.push({ name: category, gender: gender });
+    }
+  }
+
+  const offerPrice = parseInt(document.getElementById('mgmtProdOfferPrice').value, 10);
+  let originalPrice = parseInt(document.getElementById('mgmtProdOriginalPrice').value, 10);
+  if (isNaN(originalPrice) || originalPrice <= 0) {
+    originalPrice = offerPrice + 200;
+  }
+
+  const stock = Math.max(0, parseInt(document.getElementById('mgmtProdStock').value, 10) || 0);
+  const badge = document.getElementById('mgmtProdBadge').value.trim() || 'Handcrafted';
+  const desc = document.getElementById('mgmtProdDesc').value.trim() || `Handcrafted ${category} designed with love by Megha.`;
+
+  const image = mgmtUploadedImageDataUrl || 'assets/products/golden_heart_necklace.jpg';
+
+  if (!name || isNaN(offerPrice) || offerPrice <= 0) {
+    showToast('Please enter a valid product name and offer price');
+    return;
+  }
+
+  if (editId) {
+    // EDIT EXISTING LIVE PRODUCT
+    const existing = PRODUCTS.find(p => p.id === editId);
+    if (existing) {
+      existing.name = name;
+      existing.gender = gender;
+      existing.category = category;
+      existing.offerPrice = offerPrice;
+      existing.originalPrice = originalPrice;
+      existing.stock = stock;
+      existing.badge = badge;
+      if (mgmtUploadedImageDataUrl) existing.image = image;
+      existing.description = desc;
+      showToast(`Product "${name}" updated successfully!`);
+    }
+  } else {
+    // ADD NEW PRODUCT
+    const newProduct = {
+      id: 'prod_' + Date.now(),
+      name,
+      category,
+      gender,
+      offerPrice,
+      originalPrice,
+      stock,
+      badge,
+      image,
+      description: desc,
+      tags: [category, gender === 'w' ? 'Women' : gender === 'm' ? 'Men' : 'Unisex']
+    };
+    PRODUCTS.unshift(newProduct);
+    showToast(`Product "${name}" published to live website!`);
+  }
+
+  cancelProductEditing();
+  saveProducts();
+  switchMgmtTab('list');
+}
+
+function cancelProductEditing() {
+  document.getElementById('mgmtProductForm')?.reset();
+  document.getElementById('mgmtEditProductId').value = '';
+  document.getElementById('mgmtTabFormLabel').textContent = '➕ Add New Product';
+  document.getElementById('mgmtSubmitBtn').innerHTML = '<span>💾 Save & Publish to Live Website</span>';
+  document.getElementById('mgmtCancelEditBtn').style.display = 'none';
+  document.getElementById('mgmtProdCustomCat').style.display = 'none';
+
+  mgmtUploadedImageDataUrl = '';
+  const img = document.getElementById('mgmtImagePreviewImg');
+  const placeholder = document.getElementById('mgmtImagePreviewPlaceholder');
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (placeholder) placeholder.style.display = 'block';
+}
+
+function editProductInPortal(productId) {
+  const p = PRODUCTS.find(item => item.id === productId);
+  if (!p) return;
+
+  switchMgmtTab('form');
+  populateMgmtCategories();
+
+  document.getElementById('mgmtEditProductId').value = p.id;
+  document.getElementById('mgmtProdName').value = p.name;
+  document.getElementById('mgmtProdGender').value = p.gender;
+
+  const catSelect = document.getElementById('mgmtProdCategory');
+  if ([...catSelect.options].some(o => o.value === p.category)) {
+    catSelect.value = p.category;
+    document.getElementById('mgmtProdCustomCat').style.display = 'none';
+  } else {
+    catSelect.value = '__custom__';
+    const customIn = document.getElementById('mgmtProdCustomCat');
+    customIn.style.display = 'block';
+    customIn.value = p.category;
+  }
+
+  document.getElementById('mgmtProdOfferPrice').value = p.offerPrice;
+  document.getElementById('mgmtProdOriginalPrice').value = p.originalPrice;
+  document.getElementById('mgmtProdStock').value = (typeof p.stock === 'number') ? p.stock : 10;
+  document.getElementById('mgmtProdBadge').value = p.badge || '';
+  document.getElementById('mgmtProdDesc').value = p.description || '';
+
+  mgmtUploadedImageDataUrl = p.image;
+  showMgmtImagePreview(p.image);
+
+  document.getElementById('mgmtTabFormLabel').textContent = '✏️ Edit: ' + p.name;
+  document.getElementById('mgmtSubmitBtn').innerHTML = '<span>💾 Save Changes to Live Website</span>';
+  document.getElementById('mgmtCancelEditBtn').style.display = 'inline-block';
+}
+
+function deleteProductInPortal(productId) {
+  const p = PRODUCTS.find(item => item.id === productId);
+  if (!p) return;
+  if (!confirm(`Are you sure you want to permanently remove "${p.name}" from the live store?`)) return;
+
+  PRODUCTS = PRODUCTS.filter(item => item.id !== productId);
+  saveProducts();
+  renderMgmtProductsTable();
+  showToast(`Product "${p.name}" removed from store`);
+}
+
+function adjustStockInline(productId, delta) {
+  const p = PRODUCTS.find(item => item.id === productId);
+  if (!p) return;
+  const curr = (typeof p.stock === 'number') ? p.stock : 10;
+  p.stock = Math.max(0, curr + delta);
+  saveProducts();
+  renderMgmtProductsTable();
+  showToast(`Stock for "${p.name}" updated to ${p.stock}!`);
+}
+
+function setStockInline(productId, val) {
+  const p = PRODUCTS.find(item => item.id === productId);
+  if (!p) return;
+  p.stock = Math.max(0, parseInt(val, 10) || 0);
+  saveProducts();
+  renderMgmtProductsTable();
+  showToast(`Stock for "${p.name}" set to ${p.stock}!`);
+}
+
+function renderMgmtProductsTable() {
+  const wrapper = document.getElementById('mgmtProductsTableWrapper');
+  if (!wrapper) return;
+
+  const search = (document.getElementById('mgmtSearchInput')?.value || '').toLowerCase().trim();
+  const genderFilter = document.getElementById('mgmtFilterGender')?.value || 'all';
+  const stockFilter = document.getElementById('mgmtFilterStock')?.value || 'all';
+
+  let list = PRODUCTS.filter(p => {
+    if (genderFilter !== 'all' && p.gender !== genderFilter) return false;
+    const stock = (typeof p.stock === 'number') ? p.stock : 10;
+    if (stockFilter === 'in_stock' && stock <= 0) return false;
+    if (stockFilter === 'out_of_stock' && stock > 0) return false;
+    if (search) {
+      return p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search);
+    }
+    return true;
+  });
+
+  if (list.length === 0) {
+    wrapper.innerHTML = `
+      <div style="padding: 2.5rem 1rem; text-align: center; color: var(--color-text-muted);">
+        <p>No products match your search or filter.</p>
+      </div>
+    `;
+    return;
+  }
+
+  wrapper.innerHTML = `
+    <table class="mgmt-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Section</th>
+          <th>Offer Price</th>
+          <th>Stock Quantity</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(p => {
+          const stock = (typeof p.stock === 'number') ? p.stock : 10;
+          const isOut = stock <= 0;
+          const genderLabel = p.gender === 'w' ? 'Women' : p.gender === 'm' ? 'Men' : 'Unisex';
+
+          return `
+            <tr class="mgmt-prod-row">
+              <td>
+                <div class="mgmt-item-info">
+                  <img src="${p.image}" alt="${p.name}" class="mgmt-thumb">
+                  <div>
+                    <div class="mgmt-item-name">${p.name}</div>
+                    <div class="mgmt-item-cat">${p.category}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="gender-pill">${genderLabel}</span>
+              </td>
+              <td>
+                <strong>${formatINR(p.offerPrice)}</strong>
+                <div style="font-size: 0.72rem; color: #9482a3; text-decoration: line-through;">${formatINR(p.originalPrice)}</div>
+              </td>
+              <td>
+                <div class="mgmt-stock-control">
+                  <button type="button" class="mgmt-stock-btn" onclick="adjustStockInline('${p.id}', -1)" title="Decrease stock">−</button>
+                  <input type="number" class="mgmt-stock-num" min="0" value="${stock}" onchange="setStockInline('${p.id}', this.value)" aria-label="Stock">
+                  <button type="button" class="mgmt-stock-btn" onclick="adjustStockInline('${p.id}', 1)" title="Increase stock">+</button>
+                </div>
+              </td>
+              <td>
+                <span class="mgmt-stock-status-pill ${isOut ? 'out-of-stock' : 'in-stock'}">
+                  ${isOut ? 'Out of Stock' : (stock + ' In Stock')}
+                </span>
+              </td>
+              <td>
+                <div class="mgmt-actions-cell">
+                  <button type="button" class="mgmt-btn-edit" onclick="editProductInPortal('${p.id}')">✏️ Edit</button>
+                  <button type="button" class="mgmt-btn-del" onclick="deleteProductInPortal('${p.id}')" title="Delete">🗑️</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function updateMgmtLiveBadge() {
+  const badge = document.getElementById('mgmtLiveCountBadge');
+  if (badge) badge.textContent = PRODUCTS.length;
+}
+
+function resetToFactoryProducts() {
+  if (!confirm('Reset store back to the initial 6 handcrafted products? Any newly created items will be replaced.')) return;
+  PRODUCTS = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+  saveProducts();
+  renderMgmtProductsTable();
+  showToast('Store reset to factory default products');
 }

@@ -2099,3 +2099,644 @@ a {
     height: 80px;
   }
 }
+
+/* ===============================================================
+   STORE OWNER MANAGEMENT PORTAL & INVENTORY CONTROLS
+   =============================================================== */
+.footer-admin-section {
+  margin: 1.5rem auto 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mgmt-portal-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  backdrop-filter: blur(8px);
+}
+
+.mgmt-portal-trigger-btn:hover {
+  background: var(--gradient-luxe);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.mgmt-badge-glow {
+  background: #ec4899;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+}
+
+.footer-admin-hint {
+  font-size: 0.78rem;
+  color: #9d8ea8;
+  text-align: center;
+  max-width: 500px;
+}
+
+/* Modal Overlay & Window */
+.mgmt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 6, 25, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mgmt-modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mgmt-modal-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 950px;
+  max-height: 92vh;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  overflow: hidden;
+  animation: mgmtModalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mgmtModalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mgmt-modal-header {
+  padding: 1.25rem 1.75rem;
+  background: linear-gradient(135deg, #1e102d 0%, #2f174a 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mgmt-badge-live {
+  display: inline-block;
+  background: rgba(236, 72, 153, 0.25);
+  border: 1px solid rgba(236, 72, 153, 0.5);
+  color: #f472b6;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.3rem;
+}
+
+.mgmt-title {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.mgmt-subtitle {
+  font-size: 0.82rem;
+  color: #c4b5d6;
+  margin-top: 0.2rem;
+}
+
+.mgmt-close-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.mgmt-close-btn:hover {
+  background: #ec4899;
+  transform: rotate(90deg);
+}
+
+/* Tabs Nav */
+.mgmt-tabs-nav {
+  display: flex;
+  background: #fdfafc;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 1.5rem 0;
+  gap: 0.75rem;
+}
+
+.mgmt-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-tab-btn:hover {
+  color: var(--color-primary-dark);
+}
+
+.mgmt-tab-btn.active {
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary);
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Content Area */
+.mgmt-tab-content {
+  padding: 1.5rem 1.75rem;
+  overflow-y: auto;
+  max-height: calc(92vh - 170px);
+}
+
+/* Form Styles */
+.mgmt-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.15rem;
+}
+
+.mgmt-field-col-1 {
+  grid-column: span 1;
+}
+
+.mgmt-field-col-2 {
+  grid-column: span 2;
+}
+
+.mgmt-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.4rem;
+}
+
+.required-star {
+  color: #ec4899;
+}
+
+.mgmt-input,
+.mgmt-select,
+.mgmt-textarea {
+  width: 100%;
+  padding: 0.65rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: #fdfafc;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--color-text-main);
+  transition: var(--transition-fast);
+}
+
+.mgmt-input:focus,
+.mgmt-select:focus,
+.mgmt-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.mgmt-helper {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+}
+
+/* Image Upload & Preview Box */
+.mgmt-image-upload-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr 140px;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.mgmt-image-upload-box {
+  position: relative;
+}
+
+.mgmt-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.mgmt-file-dropzone {
+  border: 2px dashed rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 110px;
+  background: rgba(139, 92, 246, 0.03);
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-file-dropzone:hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: var(--color-primary);
+}
+
+.mgmt-file-dropzone svg {
+  margin-bottom: 0.35rem;
+}
+
+.mgmt-file-dropzone span {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mgmt-file-dropzone small {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+}
+
+.mgmt-image-url-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.mgmt-image-preview-box {
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  background: #f8f5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  max-height: 110px;
+  padding: 0.25rem;
+}
+
+.mgmt-image-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Form Action Buttons */
+.mgmt-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.mgmt-btn-primary {
+  background: var(--gradient-luxe);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.35);
+  transition: var(--transition-fast);
+}
+
+.mgmt-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+}
+
+.mgmt-btn-secondary {
+  background: #f3f0f7;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1.3rem;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-btn-secondary:hover {
+  background: #e9e3f1;
+}
+
+.mgmt-btn-outline {
+  background: transparent;
+  color: #be123c;
+  border: 1px dashed #f43f5e;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-btn-outline:hover {
+  background: #fff1f2;
+}
+
+/* Inventory Tab Styles */
+.mgmt-inventory-controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.mgmt-inventory-container {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.mgmt-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.mgmt-table th {
+  background: #fbf9fd;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mgmt-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+  vertical-align: middle;
+}
+
+.mgmt-table tr:hover {
+  background: #faf7fd;
+}
+
+.mgmt-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.mgmt-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.mgmt-item-name {
+  font-weight: 700;
+  color: var(--color-text-main);
+  line-height: 1.3;
+}
+
+.mgmt-item-cat {
+  font-size: 0.72rem;
+  color: var(--color-primary-dark);
+}
+
+/* Stock editor inside table */
+.mgmt-stock-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #fdfafc;
+  padding: 0.25rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.mgmt-stock-btn {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-main);
+  transition: var(--transition-fast);
+}
+
+.mgmt-stock-btn:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.mgmt-stock-num {
+  width: 42px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-main);
+}
+
+.mgmt-stock-status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mgmt-stock-status-pill.in-stock {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.mgmt-stock-status-pill.out-of-stock {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+
+.mgmt-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mgmt-btn-edit {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  border: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-btn-edit:hover {
+  background: var(--color-primary-dark);
+  color: #ffffff;
+}
+
+.mgmt-btn-del {
+  background: #fff1f2;
+  color: #e11d48;
+  border: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mgmt-btn-del:hover {
+  background: #be123c;
+  color: #ffffff;
+}
+
+.mgmt-inventory-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0.25rem;
+  margin-top: 0.75rem;
+}
+
+/* OUT OF STOCK BADGING & BUTTON DISABLED STATE ON LIVE CARDS */
+.badge-tag-out-of-stock {
+  background: #1e102d;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+  border: 1px solid #e11d48;
+}
+
+.product-card.sold-out .product-img {
+  filter: grayscale(0.5);
+  opacity: 0.78;
+}
+
+.add-to-cart-btn.out-of-stock {
+  background: #e2e8f0 !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  border-color: #cbd5e1 !important;
+}
+
+.stock-indicator-live {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.stock-indicator-live.in-stock {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.stock-indicator-live.out-stock {
+  color: #e11d48;
+  background: #fff1f2;
+}
+
+@media (max-width: 768px) {
+  .mgmt-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .mgmt-field-col-1,
+  .mgmt-field-col-2 {
+    grid-column: span 1;
+  }
+  .mgmt-image-upload-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .mgmt-inventory-controls {
+    grid-template-columns: 1fr;
+  }
+}
+

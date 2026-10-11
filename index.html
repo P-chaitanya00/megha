@@ -422,6 +422,22 @@
         <p style="color: #c4b5d6; font-size: 0.88rem; max-width: 600px; margin: 0 auto 1.5rem;">
           Handcrafted with love, memories & anti-tarnish precision. Waterproof jewellery, preserved real flower resin keepsakes, scented candles, and luxury hampers.
         </p>
+
+        <!-- STORE OWNER MANAGEMENT PORTAL ACCESS -->
+        <div class="footer-admin-section">
+          <button type="button" class="mgmt-portal-trigger-btn" onclick="openManagementPortal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Store Management Portal</span>
+            <span class="mgmt-badge-glow">Owner Access</span>
+          </button>
+          <p class="footer-admin-hint">Add & edit products (Men & Women), set categories, upload photos & manage live inventory counts.</p>
+        </div>
+
         <div style="font-size: 0.8rem; color: #8e7c9f; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.25rem;">
           &copy; 2026 Gnapakalu by Megha. All rights reserved.
         </div>
@@ -513,6 +529,169 @@
     <div class="modal-container">
       <button class="modal-close-btn" id="modalCloseBtn" aria-label="Close modal">✕</button>
       <div id="quickViewContent"></div>
+    </div>
+  </div>
+
+  <!-- ===============================================================
+       STORE OWNER MANAGEMENT PORTAL MODAL (LIVE INVENTORY & ADD/EDIT)
+       =============================================================== -->
+  <div class="mgmt-modal-overlay" id="mgmtModalOverlay">
+    <div class="mgmt-modal-container" id="mgmtModalContainer">
+      <!-- Header -->
+      <div class="mgmt-modal-header">
+        <div class="mgmt-header-title-box">
+          <span class="mgmt-badge-live">LIVE STORE DASHBOARD</span>
+          <h2 class="mgmt-title">Gnapakalu Management Portal</h2>
+          <p class="mgmt-subtitle">Add products, edit live items, adjust stock counts & upload images</p>
+        </div>
+        <button type="button" class="mgmt-close-btn" onclick="closeManagementPortal()" aria-label="Close Portal">✕</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="mgmt-tabs-nav">
+        <button type="button" class="mgmt-tab-btn active" id="mgmtTabBtnForm" onclick="switchMgmtTab('form')">
+          <span id="mgmtTabFormLabel">➕ Add New Product</span>
+        </button>
+        <button type="button" class="mgmt-tab-btn" id="mgmtTabBtnList" onclick="switchMgmtTab('list')">
+          <span>📦 Manage Live Products & Stock (<span id="mgmtLiveCountBadge">0</span>)</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: ADD & EDIT PRODUCT FORM -->
+      <div class="mgmt-tab-content" id="mgmtTabContentForm">
+        <form id="mgmtProductForm" onsubmit="handleMgmtFormSubmit(event)">
+          <input type="hidden" id="mgmtEditProductId" value="">
+
+          <div class="mgmt-form-grid">
+            <!-- Product Title -->
+            <div class="mgmt-field-col-2">
+              <label for="mgmtProdName" class="mgmt-label">Product Name / Title <span class="required-star">*</span></label>
+              <input type="text" id="mgmtProdName" class="mgmt-input" required placeholder="e.g. Royal Emerald Crystal Floral Bangle">
+            </div>
+
+            <!-- Target Audience / Gender -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdGender" class="mgmt-label">Atelier Section (Gender) <span class="required-star">*</span></label>
+              <select id="mgmtProdGender" class="mgmt-select" required>
+                <option value="w">Women's Atelier</option>
+                <option value="m">Men's Atelier</option>
+                <option value="both">Both / Unisex</option>
+              </select>
+            </div>
+
+            <!-- Category -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdCategory" class="mgmt-label">Store Category <span class="required-star">*</span></label>
+              <select id="mgmtProdCategory" class="mgmt-select" required onchange="handleMgmtCategoryChange(this.value)">
+                <!-- Populated dynamically via JS -->
+              </select>
+              <input type="text" id="mgmtProdCustomCat" class="mgmt-input" placeholder="Type new category name..." style="display: none; margin-top: 0.5rem;">
+            </div>
+
+            <!-- Offer Price -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdOfferPrice" class="mgmt-label">Offer Price (₹) <span class="required-star">*</span></label>
+              <input type="number" id="mgmtProdOfferPrice" class="mgmt-input" min="1" required placeholder="e.g. 499" oninput="autoCalculateOriginalPrice(this.value)">
+              <span class="mgmt-helper">Actual selling price presented to customers</span>
+            </div>
+
+            <!-- Original Strike Price -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdOriginalPrice" class="mgmt-label">Original Strikethrough Price (₹) <span class="required-star">*</span></label>
+              <input type="number" id="mgmtProdOriginalPrice" class="mgmt-input" min="1" required placeholder="e.g. 699">
+              <span class="mgmt-helper">Auto: Offer Price + ₹200 (Editable)</span>
+            </div>
+
+            <!-- Stock Quantity (Item Count) -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdStock" class="mgmt-label">Initial Stock Count (Items Available) <span class="required-star">*</span></label>
+              <input type="number" id="mgmtProdStock" class="mgmt-input" min="0" required value="10" placeholder="e.g. 10">
+              <span class="mgmt-helper">Reduces automatically when orders are placed (0 = Out of Stock)</span>
+            </div>
+
+            <!-- Badge Tag -->
+            <div class="mgmt-field-col-1">
+              <label for="mgmtProdBadge" class="mgmt-label">Badge Chip (Optional)</label>
+              <input type="text" id="mgmtProdBadge" class="mgmt-input" placeholder="e.g. 18K Anti-Tarnish, Handmade Resin">
+              <span class="mgmt-helper">Top-left corner chip on card</span>
+            </div>
+
+            <!-- Image Upload & Preview -->
+            <div class="mgmt-field-col-2">
+              <label class="mgmt-label">Product Image <span class="required-star">*</span></label>
+              <div class="mgmt-image-upload-wrapper">
+                <div class="mgmt-image-upload-box">
+                  <input type="file" id="mgmtProdImageFile" accept="image/*" class="mgmt-file-input" onchange="handleMgmtImageUpload(event)">
+                  <label for="mgmtProdImageFile" class="mgmt-file-dropzone">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>Click to Choose Photo from Device</span>
+                    <small>JPG, PNG, WEBP — Live instant preview & storage</small>
+                  </label>
+                </div>
+                
+                <div class="mgmt-image-url-box">
+                  <span style="font-size: 0.78rem; font-weight: 700; color: var(--color-text-muted);">OR Image URL:</span>
+                  <input type="url" id="mgmtProdImageUrl" class="mgmt-input" placeholder="https://..." oninput="handleMgmtImageUrl(this.value)">
+                </div>
+
+                <div class="mgmt-image-preview-box" id="mgmtImagePreviewBox">
+                  <img id="mgmtImagePreviewImg" src="" alt="Preview" style="display: none;">
+                  <span id="mgmtImagePreviewPlaceholder" style="color: var(--color-text-muted); font-size: 0.8rem;">Image preview will appear here</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mgmt-field-col-2">
+              <label for="mgmtProdDesc" class="mgmt-label">Description & Materials</label>
+              <textarea id="mgmtProdDesc" class="mgmt-textarea" rows="3" placeholder="Handcrafted with 18K waterproof stainless steel / authentic resin flakes..."></textarea>
+            </div>
+          </div>
+
+          <!-- Form Buttons -->
+          <div class="mgmt-form-actions">
+            <button type="button" id="mgmtCancelEditBtn" class="mgmt-btn-secondary" style="display: none;" onclick="cancelProductEditing()">Cancel Edit</button>
+            <button type="submit" id="mgmtSubmitBtn" class="mgmt-btn-primary">
+              <span>💾 Save & Publish to Live Website</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 2: LIVE PRODUCTS & INVENTORY MANAGER -->
+      <div class="mgmt-tab-content" id="mgmtTabContentList" style="display: none;">
+        <div class="mgmt-inventory-controls">
+          <input type="text" id="mgmtSearchInput" class="mgmt-input" placeholder="Search by name, category..." oninput="renderMgmtProductsTable()">
+          <select id="mgmtFilterGender" class="mgmt-select" onchange="renderMgmtProductsTable()">
+            <option value="all">All Sections (Men & Women)</option>
+            <option value="w">Women Only</option>
+            <option value="m">Men Only</option>
+            <option value="both">Unisex Only</option>
+          </select>
+          <select id="mgmtFilterStock" class="mgmt-select" onchange="renderMgmtProductsTable()">
+            <option value="all">All Stock Status</option>
+            <option value="in_stock">In Stock (> 0)</option>
+            <option value="out_of_stock">Out of Stock (0)</option>
+          </select>
+        </div>
+
+        <div class="mgmt-inventory-container">
+          <div id="mgmtProductsTableWrapper">
+            <!-- Dynamically populated rows -->
+          </div>
+        </div>
+
+        <div class="mgmt-inventory-footer">
+          <button type="button" class="mgmt-btn-outline" onclick="resetToFactoryProducts()">
+            🔄 Reset to Original 6 Products
+          </button>
+          <span style="font-size: 0.8rem; color: var(--color-text-muted);">Changes save and reflect on the live website immediately.</span>
+        </div>
+      </div>
     </div>
   </div>
 
