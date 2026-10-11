@@ -1191,6 +1191,9 @@ function openCheckoutModal() {
     updateCheckoutSummaryUI();
   }
 
+  // Check address completeness immediately to lock/unlock payment QR
+  checkAddressFieldsComplete();
+
   const modal = document.getElementById('checkoutModalOverlay');
   if (modal) {
     modal.classList.add('open');
@@ -1210,6 +1213,49 @@ function closeCheckoutOnBackdrop(e) {
   if (e.target && e.target.id === 'checkoutModalOverlay') {
     closeCheckoutModal();
   }
+}
+
+// Evaluates all star-marked delivery fields to unlock / lock the Payment QR Code & UTR input
+function checkAddressFieldsComplete() {
+  const name = (document.getElementById('custName')?.value || '').trim();
+  const rawPhone = document.getElementById('custPhone')?.value || '';
+  const phone = rawPhone.replace(/\D/g, '');
+  const houseNo = (document.getElementById('custHouseNo')?.value || '').trim();
+  const landmark = (document.getElementById('custLandmark')?.value || '').trim();
+  const address = (document.getElementById('custAddress')?.value || '').trim();
+  const rawPin = document.getElementById('custPincode')?.value || '';
+  const pincode = rawPin.replace(/\D/g, '');
+  const state = (document.getElementById('custState')?.value || '').trim();
+
+  const missing = [];
+  if (name.length < 2) missing.push('Full Name');
+  if (phone.length !== 10) missing.push('10-digit Mobile');
+  if (houseNo.length < 1) missing.push('House / Flat No');
+  if (landmark.length < 1) missing.push('Landmark');
+  if (address.length < 2) missing.push('Street Address');
+  if (pincode.length !== 6) missing.push('6-digit Pincode');
+  if (!state) missing.push('State');
+
+  const wrapper = document.getElementById('checkoutPaymentLockWrapper');
+  const lockPillText = document.getElementById('qrLockStatusText');
+
+  const isComplete = (missing.length === 0);
+
+  if (wrapper) {
+    if (isComplete) {
+      wrapper.classList.remove('locked');
+      if (lockPillText) {
+        lockPillText.textContent = '✅ Address complete! QR Unlocked';
+      }
+    } else {
+      wrapper.classList.add('locked');
+      if (lockPillText) {
+        lockPillText.textContent = `Awaiting: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ` +${missing.length - 3} more` : ''}`;
+      }
+    }
+  }
+
+  return isComplete;
 }
 
 // Real-time backend pincode lookup & courier rate logic
@@ -1532,6 +1578,12 @@ function submitCustomerOrder(event) {
   const pincode = rawPincode.replace(/\D/g, '').slice(0, 6);
   const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'PhonePe';
 
+  // Check address completeness first
+  if (!checkAddressFieldsComplete()) {
+    showToast('⚠️ Please complete all required delivery fields marked with * above to unlock payment QR');
+    return;
+  }
+
   // Validations
   if (!name || name.length < 2) {
     showToast('Please enter your full name');
@@ -1702,36 +1754,31 @@ function submitCustomerOrder(event) {
     `Please confirm the order and dispatch details.`
   );
 
-  // Smoothly open Order Placed Modal with gentle transition delay
-  setTimeout(() => {
-    showOrderPlacedGlassModal(orderPayload, waOrderText);
-  }, 160);
+  // Directly display Order Placed Modal with zero delay
+  showOrderPlacedGlassModal(orderPayload, waOrderText);
 }
 
 // DEDICATED ORDER PLACED GLASS EFFECT MODAL HANDLERS
-let orderPlacedModalCanClose = false;
-
 function handleOrderPlacedOverlayClick(e) {
-  if (!orderPlacedModalCanClose) return; // Discard rapid ghost-clicks / touch releases right after opening
-  if (e && e.target && e.target.id === 'orderPlacedModalOverlay') {
-    closeOrderPlacedModal();
-  }
+  // Modal stays visible until user clicks the cross button (✕). Never close on backdrop click.
+  return;
 }
 
 function showOrderPlacedGlassModal(order, waOrderText) {
   const overlay = document.getElementById('orderPlacedModalOverlay');
-  const receiptContainer = document.getElementById('orderGlassReceiptContent');
+  const titleElem = document.getElementById('orderGlassTitle');
   const custMsg = document.getElementById('orderGlassCustomerMsg');
+  const receiptContainer = document.getElementById('orderGlassReceiptContent');
   const waBtn = document.getElementById('orderGlassWaBtn');
 
-  // Prevent immediate accidental close from touch events
-  orderPlacedModalCanClose = false;
-  setTimeout(() => {
-    orderPlacedModalCanClose = true;
-  }, 1200);
+  // Personalize title with Customer Name
+  if (titleElem) {
+    titleElem.innerHTML = `✨ ${order.customerName}, Your Order is Placed! 🎉`;
+  }
 
+  // Personalize message with Customer Name
   if (custMsg) {
-    custMsg.innerHTML = `Thank you <strong>${order.customerName}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.`;
+    custMsg.innerHTML = `Thank you <strong>${order.customerName}</strong>! Your handcrafted pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.`;
   }
 
   if (receiptContainer) {
@@ -1795,6 +1842,8 @@ function closeOrderPlacedModal() {
     overlay.classList.remove('open');
     document.body.style.overflow = '';
   }
+  // Redirect to home screen when cross is clicked
+  navigateToHome();
 }
 
 // TOASTS
