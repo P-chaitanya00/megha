@@ -836,7 +836,11 @@ function updateCartUI() {
   // In the cart drawer, courier charge is indicated as calculated at next step based on pincode
   const cartDeliveryCharge = document.getElementById('cartDeliveryCharge');
   if (cartDeliveryCharge) {
-    cartDeliveryCharge.textContent = 'Calculated at next step';
+    if (isOrderFreeShipping()) {
+      cartDeliveryCharge.innerHTML = '<span style="color: #16a34a; font-weight: 800;">FREE (Product under ₹10)</span>';
+    } else {
+      cartDeliveryCharge.textContent = 'Calculated at next step';
+    }
   }
 
   if (discountRow && discountElem) {
@@ -1016,6 +1020,15 @@ function closeModal() {
 // CUSTOMER CHECKOUT & DELIVERY DETAILS FLOW
 // ===============================================================
 
+// Check if the order qualifies for zero extra charges (Free shipping / No extra charges)
+// "in the whole website if any product is under 10rs then u dont add any extra charges just the item price should get"
+function isOrderFreeShipping() {
+  if (!cart || cart.length === 0) return false;
+  const hasUnder10Item = cart.some(item => (typeof item.price === 'number' && item.price <= 10));
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  return hasUnder10Item || subtotal <= 10;
+}
+
 let checkoutShippingInfo = {
   fee: 0,
   label: 'Pending Pincode',
@@ -1030,6 +1043,20 @@ function openCheckoutModal() {
     return;
   }
   closeCart();
+
+  // If order contains products under ₹10, announce zero extra charges
+  if (isOrderFreeShipping()) {
+    const noticeBox = document.getElementById('checkoutPincodeNotice');
+    const noticeIcon = document.getElementById('pincodeNoticeIcon');
+    const noticeText = document.getElementById('pincodeNoticeText');
+    const statusIcon = document.getElementById('custPincodeStatus');
+    if (statusIcon) statusIcon.textContent = '🎁';
+    if (noticeBox) noticeBox.className = 'checkout-pincode-notice valid-zone';
+    if (noticeIcon) noticeIcon.textContent = '✨';
+    if (noticeText) {
+      noticeText.innerHTML = `<strong>Zero Extra Charges:</strong> Product(s) under ₹10 get 100% Free Shipping. You only pay the exact item price!`;
+    }
+  }
 
   // Pre-fill previously saved customer details from localStorage if available
   try {
@@ -1073,6 +1100,17 @@ function closeCheckoutOnBackdrop(e) {
 
 // Real-time backend pincode lookup & courier rate logic
 function calculateShippingFromPincode(pincode, stateHint = '') {
+  // If order qualifies for zero extra charges (any product under ₹10), fee is always 0
+  if (isOrderFreeShipping()) {
+    return {
+      fee: 0,
+      label: 'Free Delivery (Item under ₹10)',
+      state: stateHint || '',
+      isComplete: true,
+      code: 'FREE_UNDER_10'
+    };
+  }
+
   const pin = String(pincode || '').trim().replace(/\D/g, '');
 
   if (pin.length === 6) {
@@ -1145,7 +1183,14 @@ function onCheckoutPincodeInput(val) {
   const noticeText = document.getElementById('pincodeNoticeText');
   const statusIcon = document.getElementById('custPincodeStatus');
 
-  if (cleanPin.length === 6) {
+  if (isOrderFreeShipping()) {
+    if (statusIcon) statusIcon.textContent = '🎁';
+    if (noticeBox) noticeBox.className = 'checkout-pincode-notice valid-zone';
+    if (noticeIcon) noticeIcon.textContent = '✨';
+    if (noticeText) {
+      noticeText.innerHTML = `<strong>Free Delivery Applied:</strong> Since product(s) in your bag are under ₹10, zero extra charges are added. Just pay the item price!`;
+    }
+  } else if (cleanPin.length === 6) {
     if (statusIcon) statusIcon.textContent = '✅';
     if (noticeBox) {
       noticeBox.className = 'checkout-pincode-notice valid-zone';
@@ -1187,7 +1232,7 @@ function updateCheckoutSummaryUI() {
     discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
   }
 
-  const fee = checkoutShippingInfo.fee || 0;
+  const fee = isOrderFreeShipping() ? 0 : (checkoutShippingInfo.fee || 0);
   const grandTotal = Math.max(0, subtotal - discount + fee);
 
   const countElem = document.getElementById('checkoutItemCount');
@@ -1212,7 +1257,10 @@ function updateCheckoutSummaryUI() {
   }
 
   if (zoneBadge) {
-    if (checkoutShippingInfo.isComplete) {
+    if (isOrderFreeShipping()) {
+      zoneBadge.className = 'shipping-rate-pill ready';
+      zoneBadge.textContent = 'FREE (Under ₹10)';
+    } else if (checkoutShippingInfo.isComplete) {
       zoneBadge.className = 'shipping-rate-pill ready';
       zoneBadge.textContent = `${checkoutShippingInfo.label} (${formatINR(fee)})`;
     } else {
@@ -1222,7 +1270,9 @@ function updateCheckoutSummaryUI() {
   }
 
   if (deliveryChargeElem) {
-    if (checkoutShippingInfo.isComplete) {
+    if (isOrderFreeShipping()) {
+      deliveryChargeElem.innerHTML = '<span style="color: #16a34a; font-weight: 800;">₹0 (Free)</span>';
+    } else if (checkoutShippingInfo.isComplete) {
       deliveryChargeElem.textContent = formatINR(fee);
     } else {
       deliveryChargeElem.textContent = 'Enter Pincode';
