@@ -457,6 +457,22 @@ function selectSubcategoryChip(catKey) {
   renderProducts();
 }
 
+// Customer-facing stock status resolver:
+// - Count numbers are NEVER shown to customers
+// - If count >= 5: "In Stock"
+// - If count < 5 and count > 0: "Only few left"
+// - If count <= 0: "Out of Stock"
+function getStockDisplay(stockCount) {
+  const count = (typeof stockCount === 'number') ? stockCount : 10;
+  if (count <= 0) {
+    return { label: 'Out of Stock', cssClass: 'out-stock', isOutOfStock: true, isFewLeft: false };
+  }
+  if (count < 5) {
+    return { label: 'Only few left', cssClass: 'few-stock', isOutOfStock: false, isFewLeft: true };
+  }
+  return { label: 'In Stock', cssClass: 'in-stock', isOutOfStock: false, isFewLeft: false };
+}
+
 // ===============================================================
 // PRODUCTS GRID RENDERER
 // ===============================================================
@@ -507,8 +523,7 @@ function renderProducts() {
     const discountPercent = Math.round((savings / item.originalPrice) * 100);
     const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
     const currentImg = activeVariant ? activeVariant.image : item.image;
-    const currentStock = (typeof item.stock === 'number') ? item.stock : 10;
-    const isOutOfStock = currentStock <= 0;
+    const stockInfo = getStockDisplay(item.stock);
 
     const variantSwatchesHtml = item.variants ? `
       <div class="product-color-picker">
@@ -528,13 +543,15 @@ function renderProducts() {
     ` : '';
 
     return `
-      <div class="product-card ${isOutOfStock ? 'sold-out' : ''}" id="card-${item.id}">
+      <div class="product-card ${stockInfo.isOutOfStock ? 'sold-out' : ''}" id="card-${item.id}">
         <div class="product-image-container">
           <img src="${currentImg}" alt="${item.name}" id="img-${item.id}" class="product-img" loading="lazy" />
           
           <div class="card-badges">
-            ${isOutOfStock 
+            ${stockInfo.isOutOfStock 
               ? `<span class="badge-tag-out-of-stock">OUT OF STOCK</span>` 
+              : stockInfo.isFewLeft
+              ? `<span class="badge-tag-few-left">ONLY FEW LEFT</span>`
               : `<span class="badge-tag-discount">${discountPercent}% OFF</span>`
             }
             <span class="badge-tag-feature">${item.badge || 'Handcrafted'}</span>
@@ -559,7 +576,7 @@ function renderProducts() {
               <span class="product-material">${item.category}</span>
               <div style="display: flex; gap: 0.35rem; align-items: center;">
                 <span class="gender-pill">${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
-                <span class="stock-indicator-live ${isOutOfStock ? 'out-stock' : 'in-stock'}">${isOutOfStock ? 'Sold Out' : (currentStock + ' in stock')}</span>
+                <span class="stock-indicator-live ${stockInfo.cssClass}">${stockInfo.label}</span>
               </div>
             </div>
             
@@ -576,7 +593,7 @@ function renderProducts() {
               </div>
             </div>
             
-            ${isOutOfStock ? `
+            ${stockInfo.isOutOfStock ? `
               <button class="add-to-cart-btn out-of-stock" disabled title="Item Out of Stock">
                 <span>Out of Stock</span>
               </button>
@@ -949,7 +966,8 @@ function openQuickView(productId) {
   const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
   const currentImg = activeVariant ? activeVariant.image : item.image;
   const currentStock = (typeof item.stock === 'number') ? item.stock : 10;
-  const isOutOfStock = currentStock <= 0;
+  const stockInfo = getStockDisplay(currentStock);
+  const isOutOfStock = stockInfo.isOutOfStock;
 
   const variantPickerHtml = item.variants ? `
     <div style="margin: 1rem 0;">
@@ -980,7 +998,7 @@ function openQuickView(productId) {
       <div class="quickview-details">
         <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
           <span class="gender-pill">${item.category} • ${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
-          <span class="stock-indicator-live ${isOutOfStock ? 'out-stock' : 'in-stock'}">${isOutOfStock ? 'Out of Stock' : (currentStock + ' in stock')}</span>
+          <span class="stock-indicator-live ${stockInfo.cssClass}">${stockInfo.label}</span>
         </div>
         <h2>${item.name}</h2>
         
