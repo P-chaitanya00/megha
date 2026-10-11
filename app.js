@@ -1558,13 +1558,15 @@ async function dispatchOrderEmail(order) {
 // Order Submission & Verification
 function submitCustomerOrder(event) {
   if (event) {
-    event.preventDefault();
-    if (event.stopPropagation) event.stopPropagation();
+    try {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    } catch (e) {}
   }
 
-  if (cart.length === 0) {
+  if (!cart || cart.length === 0) {
     showToast('Your bag is empty!');
-    return;
+    return false;
   }
 
   const name = (document.getElementById('custName')?.value || '').trim();
@@ -1578,47 +1580,47 @@ function submitCustomerOrder(event) {
   const pincode = rawPincode.replace(/\D/g, '').slice(0, 6);
   const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'PhonePe';
 
-  // Check address completeness first
+  // Check address completeness
   if (!checkAddressFieldsComplete()) {
     showToast('⚠️ Please complete all required delivery fields marked with * above to unlock payment QR');
-    return;
+    return false;
   }
 
   // Validations
   if (!name || name.length < 2) {
     showToast('Please enter your full name');
     document.getElementById('custName')?.focus();
-    return;
+    return false;
   }
   if (!phone || phone.length !== 10) {
     showToast('Please enter a valid 10-digit mobile number');
     document.getElementById('custPhone')?.focus();
-    return;
+    return false;
   }
   if (!houseNo) {
     showToast('Please enter your House / Flat / Door Number');
     document.getElementById('custHouseNo')?.focus();
-    return;
+    return false;
   }
   if (!address) {
     showToast('Please enter your Street / Area / Colony address');
     document.getElementById('custAddress')?.focus();
-    return;
+    return false;
   }
   if (!landmark) {
     showToast('Please enter a nearby landmark');
     document.getElementById('custLandmark')?.focus();
-    return;
+    return false;
   }
   if (!pincode || pincode.length !== 6) {
     showToast('Please enter a valid 6-digit Pincode');
     document.getElementById('custPincode')?.focus();
-    return;
+    return false;
   }
   if (!state) {
     showToast('Please select your state');
     document.getElementById('custState')?.focus();
-    return;
+    return false;
   }
 
   const rawUtr = document.getElementById('custUtrNumber')?.value || '';
@@ -1638,45 +1640,26 @@ function submitCustomerOrder(event) {
         utrEl.style.boxShadow = '';
       }, 4000);
     }
-    return; // STOP execution so order is not placed without valid payment UTR
+    return false;
   }
 
   // Calculate final shipping strictly via backend pincode checker
   const shippingInfo = calculateShippingFromPincode(pincode, state);
 
-  // Save customer details in localStorage for future convenience
-  try {
-    localStorage.setItem('gnapakalu_cust_details', JSON.stringify({
-      name, phone, houseNo, address, landmark, state, pincode
-    }));
-  } catch (e) {}
-
-  // 1. DEDUCT ITEM QUANTITY FROM PRODUCT STOCK ON SUCCESSFUL ORDER PLACEMENT
-  cart.forEach(cartItem => {
-    const baseId = cartItem.productId || cartItem.id.split('_')[0];
-    const prod = PRODUCTS.find(p => p.id === baseId || p.id === cartItem.id);
-    if (prod) {
-      const currentStock = (typeof prod.stock === 'number') ? prod.stock : 10;
-      prod.stock = Math.max(0, currentStock - cartItem.qty);
-    }
-  });
-
-  saveProducts();
-  renderProducts();
-
-  // Compute order totals
+  // Compute order totals safely
   const orderNum = Math.floor(100000 + Math.random() * 900000);
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const subtotal = cart.reduce((sum, item) => sum + ((Number(item.price) || 0) * (Number(item.qty) || 1)), 0);
   let discount = 0;
   if (appliedPromo) {
     discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
   }
-  const grandTotal = Math.max(0, subtotal - discount + shippingInfo.fee);
-  const orderedItemsBackup = [...cart];
+  const fee = (typeof shippingInfo.fee === 'number') ? shippingInfo.fee : 0;
+  const grandTotal = Math.max(0, subtotal - discount + fee);
+  const orderedItemsBackup = JSON.parse(JSON.stringify(cart));
 
   const nowFormatted = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 
-  // 2. CONSTRUCT COMPLETE ORDER OBJECT
+  // CONSTRUCT COMPLETE ORDER OBJECT
   const orderPayload = {
     orderId: `#GNAP-${orderNum}`,
     orderDate: nowFormatted,
@@ -1687,17 +1670,17 @@ function submitCustomerOrder(event) {
     landmark: landmark,
     state: state,
     pincode: pincode,
-    shippingZone: shippingInfo.label,
-    courierCharge: shippingInfo.fee,
-    courierChargeFormatted: formatINR(shippingInfo.fee),
+    shippingZone: shippingInfo.label || 'Standard Delivery',
+    courierCharge: fee,
+    courierChargeFormatted: formatINR(fee),
     items: orderedItemsBackup.map(i => ({
       id: i.id,
       name: i.name,
-      category: i.category,
-      selectedVariant: i.selectedVariant || '',
-      qty: i.qty,
-      price: i.price,
-      total: i.price * i.qty
+      category: i.category || 'Jewellery',
+      selectedVariant: i.selectedVariant || i.variantName || '',
+      qty: i.qty || 1,
+      price: i.price || 0,
+      total: (i.price || 0) * (i.qty || 1)
     })),
     subtotal: subtotal,
     subtotalFormatted: formatINR(subtotal),
@@ -1711,56 +1694,95 @@ function submitCustomerOrder(event) {
     paymentStatus: 'Payment Completed / Order Placed'
   };
 
-  // 3. PERSIST ORDER IN LOCALSTORAGE FOR STORE OWNER TRACKING
+  // Construct WhatsApp order message safely
+  let waOrderText = '';
+  try {
+    waOrderText = encodeURIComponent(
+      `*✨ New Order - Gnapakalu by Megha*\n\n` +
+      `*Order ID:* #GNAP-${orderNum}\n` +
+      `*Customer Name:* ${name}\n` +
+      `*Phone:* +91 ${phone}\n\n` +
+      `*📍 Delivery Address:*\n` +
+      `${houseNo}, ${address}\n` +
+      `Landmark: ${landmark}\n` +
+      `State: ${state} - PIN: ${pincode}\n\n` +
+      `*💳 Payment Method / App:* ${selectedPaymentApp}\n` +
+      `*Payment UTR / Ref:* ${orderPayload.utrNumber}\n` +
+      (orderPayload.transactionId && orderPayload.transactionId !== 'N/A' && orderPayload.transactionId !== orderPayload.utrNumber ? `*Transaction ID:* ${orderPayload.transactionId}\n` : '') +
+      `*Payment Status:* Payment Completed\n\n` +
+      `*📦 Ordered Items:*\n` +
+      orderedItemsBackup.map(i => `• ${i.name} (${i.selectedVariant || i.variantName || i.category || 'Item'}) x ${i.qty} = ${formatINR(i.price * i.qty)}`).join('\n') +
+      `\n\n*💰 Payment Summary:*\n` +
+      `Subtotal: ${formatINR(subtotal)}\n` +
+      (discount > 0 ? `Discount (${appliedPromo ? appliedPromo.code : ''}): -${formatINR(discount)}\n` : '') +
+      `Courier Charge (${shippingInfo.label}): ${formatINR(fee)}\n` +
+      `*Grand Total: ${formatINR(grandTotal)}*\n\n` +
+      `Please confirm the order and dispatch details.`
+    );
+  } catch (errWa) {
+    console.warn('WhatsApp text encoding warning:', errWa);
+  }
+
+  // 1. FIRST: DISPLAY THE "ORDER IS PLACED" MODAL IMMEDIATELY!
+  closeCheckoutModal();
+  closeCart();
+  showOrderPlacedGlassModal(orderPayload, waOrderText);
+
+  // 2. Clear Cart and update UI safely
+  try {
+    cart = [];
+    saveCart();
+    updateCartUI();
+  } catch (errCart) {
+    console.warn('Cart clear non-fatal error:', errCart);
+  }
+
+  // 3. Deduct Stock safely
+  try {
+    orderedItemsBackup.forEach(cartItem => {
+      const baseId = cartItem.productId || (typeof cartItem.id === 'string' ? cartItem.id.split('_')[0] : String(cartItem.id || ''));
+      const prod = PRODUCTS.find(p => String(p.id) === String(baseId) || String(p.id) === String(cartItem.id));
+      if (prod) {
+        const currentStock = (typeof prod.stock === 'number') ? prod.stock : 10;
+        prod.stock = Math.max(0, currentStock - (cartItem.qty || 1));
+      }
+    });
+    saveProducts();
+    renderProducts();
+  } catch (errStock) {
+    console.warn('Stock update non-fatal error:', errStock);
+  }
+
+  // 4. Save Customer details for next checkout
+  try {
+    localStorage.setItem('gnapakalu_cust_details', JSON.stringify({
+      name, phone, houseNo, address, landmark, state, pincode
+    }));
+  } catch (e) {}
+
+  // 5. Persist Order in LocalStorage for Store Owner Tracking
   try {
     let allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
     allOrders.unshift(orderPayload);
     localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
-    updateMgmtOrdersCount();
+    if (typeof updateMgmtOrdersCount === 'function') updateMgmtOrdersCount();
   } catch (errStorage) {
     console.warn('Storage warning for orders:', errStorage);
   }
 
-  // 4. AUTOMATICALLY DISPATCH EMAIL ALERT TO Sridevigummadi37@gmail.com
-  dispatchOrderEmail(orderPayload);
+  // 6. Automatically Dispatch Email Alert to Sridevigummadi37@gmail.com
+  try {
+    dispatchOrderEmail(orderPayload);
+  } catch (errEmail) {
+    console.warn('Email dispatch non-fatal error:', errEmail);
+  }
 
-  // Close checkout modal & clear cart
-  closeCheckoutModal();
-  cart = [];
-  saveCart();
-  updateCartUI();
-
-  // Construct WhatsApp order message
-  const waOrderText = encodeURIComponent(
-    `*✨ New Order - Gnapakalu by Megha*\n\n` +
-    `*Order ID:* #GNAP-${orderNum}\n` +
-    `*Customer Name:* ${name}\n` +
-    `*Phone:* +91 ${phone}\n\n` +
-    `*📍 Delivery Address:*\n` +
-    `${houseNo}, ${address}\n` +
-    `Landmark: ${landmark}\n` +
-    `State: ${state} - PIN: ${pincode}\n\n` +
-    `*💳 Payment Method / App:* ${selectedPaymentApp}\n` +
-    `*Payment UTR / Ref:* ${orderPayload.utrNumber}\n` +
-    (orderPayload.transactionId && orderPayload.transactionId !== 'N/A' && orderPayload.transactionId !== orderPayload.utrNumber ? `*Transaction ID:* ${orderPayload.transactionId}\n` : '') +
-    `*Payment Status:* Payment Completed\n\n` +
-    `*📦 Ordered Items:*\n` +
-    orderedItemsBackup.map(i => `• ${i.name} (${i.selectedVariant || i.category}) x ${i.qty} = ${formatINR(i.price * i.qty)}`).join('\n') +
-    `\n\n*💰 Payment Summary:*\n` +
-    `Subtotal: ${formatINR(subtotal)}\n` +
-    (discount > 0 ? `Discount (${appliedPromo ? appliedPromo.code : ''}): -${formatINR(discount)}\n` : '') +
-    `Courier Charge (${shippingInfo.label}): ${formatINR(shippingInfo.fee)}\n` +
-    `*Grand Total: ${formatINR(grandTotal)}*\n\n` +
-    `Please confirm the order and dispatch details.`
-  );
-
-  // Directly display Order Placed Modal with zero delay
-  showOrderPlacedGlassModal(orderPayload, waOrderText);
+  return false;
 }
 
 // DEDICATED ORDER PLACED GLASS EFFECT MODAL HANDLERS
 function handleOrderPlacedOverlayClick(e) {
-  // Modal stays visible until user clicks the cross button (✕). Never close on backdrop click.
+  // Modal strictly stays visible until user clicks the cross button (✕). Never close on backdrop click.
   return;
 }
 
@@ -1832,6 +1854,11 @@ function showOrderPlacedGlassModal(order, waOrderText) {
 
   if (overlay) {
     overlay.classList.add('open');
+    overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'auto';
+    overlay.style.zIndex = '99999999';
     document.body.style.overflow = 'hidden';
   }
 }
@@ -1840,6 +1867,10 @@ function closeOrderPlacedModal() {
   const overlay = document.getElementById('orderPlacedModalOverlay');
   if (overlay) {
     overlay.classList.remove('open');
+    overlay.style.display = 'none';
+    overlay.style.visibility = 'hidden';
+    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = 'none';
     document.body.style.overflow = '';
   }
   // Redirect to home screen when cross is clicked
