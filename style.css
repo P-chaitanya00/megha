@@ -1221,12 +1221,24 @@ a {
   background: var(--color-primary-soft);
   border: 1px solid var(--color-border);
   color: var(--color-primary-dark);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.three-lines-btn * {
+  pointer-events: none;
 }
 
 .three-lines-btn:hover {
   background: #eedefc;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px var(--color-shadow-hover);
+}
+
+.three-lines-btn:active {
+  transform: scale(0.95);
 }
 
 .side-categories-drawer {

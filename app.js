@@ -708,13 +708,30 @@ function renderProducts() {
 // SIDE CATEGORIES DRAWER (MATCHES EXACT 1ST PICTURE)
 // ===============================================================
 function openSidebarDrawer() {
-  document.getElementById('sideCategoriesDrawer')?.classList.add('open');
-  document.getElementById('sideDrawerOverlay')?.classList.add('open');
+  const drawer = document.getElementById('sideCategoriesDrawer');
+  const overlay = document.getElementById('sideDrawerOverlay');
+  if (drawer) {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+  if (overlay) {
+    overlay.classList.add('open');
+  }
+  renderDrawerCategories();
+  document.body.style.overflow = 'hidden';
 }
 
 function closeSidebarDrawer() {
-  document.getElementById('sideCategoriesDrawer')?.classList.remove('open');
-  document.getElementById('sideDrawerOverlay')?.classList.remove('open');
+  const drawer = document.getElementById('sideCategoriesDrawer');
+  const overlay = document.getElementById('sideDrawerOverlay');
+  if (drawer) {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+  if (overlay) {
+    overlay.classList.remove('open');
+  }
+  document.body.style.overflow = '';
 }
 
 function filterDrawerByGender(gender) {
