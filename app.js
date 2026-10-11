@@ -266,7 +266,59 @@ let currentSort = 'featured';
 let cart = JSON.parse(localStorage.getItem('gnapakalu_cart') || '[]');
 let wishlist = JSON.parse(localStorage.getItem('gnapakalu_wishlist') || '[]');
 let appliedPromo = null;
-const FREE_SHIPPING_THRESHOLD_INR = 999;
+let currentShippingPincode = localStorage.getItem('gnapakalu_pincode') || '';
+let currentShippingZone = localStorage.getItem('gnapakalu_zone') || 'auto';
+
+// SHIPPING COURIER CHARGES MAPPING:
+// AP: ₹85/-
+// Telangana: ₹125/-
+// All over India: ₹135/-
+// Other countries: ₹3499/-
+const SHIPPING_RATES = {
+  AP: { rate: 85, label: 'Andhra Pradesh (AP)' },
+  TS: { rate: 125, label: 'Telangana' },
+  INDIA: { rate: 135, label: 'All Over India' },
+  INTERNATIONAL: { rate: 3499, label: 'Other Countries (International)' }
+};
+
+function getShippingDetails(pincode, selectedZone = 'auto') {
+  // If explicitly selected dropdown
+  if (selectedZone === 'international') {
+    return { fee: SHIPPING_RATES.INTERNATIONAL.rate, label: SHIPPING_RATES.INTERNATIONAL.label, code: 'INT' };
+  }
+  if (selectedZone === 'ap') {
+    return { fee: SHIPPING_RATES.AP.rate, label: SHIPPING_RATES.AP.label, code: 'AP' };
+  }
+  if (selectedZone === 'ts') {
+    return { fee: SHIPPING_RATES.TS.rate, label: SHIPPING_RATES.TS.label, code: 'TS' };
+  }
+  if (selectedZone === 'india') {
+    return { fee: SHIPPING_RATES.INDIA.rate, label: SHIPPING_RATES.INDIA.label, code: 'INDIA' };
+  }
+
+  // Auto detection via pincode
+  const pin = String(pincode || '').trim().replace(/\D/g, '');
+  if (pin.length >= 3) {
+    const pinPrefix2 = parseInt(pin.slice(0, 2), 10);
+    const pinPrefix3 = parseInt(pin.slice(0, 3), 10);
+
+    // Telangana pincodes strictly: 500xxx - 509xxx (Prefix 50)
+    if (pinPrefix2 === 50) {
+      return { fee: SHIPPING_RATES.TS.rate, label: 'Telangana (TS)', code: 'TS' };
+    }
+    // Andhra Pradesh pincodes strictly: 515xxx - 535xxx (Prefix 51, 52, 53)
+    if (pinPrefix2 >= 51 && pinPrefix2 <= 53) {
+      return { fee: SHIPPING_RATES.AP.rate, label: 'Andhra Pradesh (AP)', code: 'AP' };
+    }
+    // Any valid 6-digit Indian PIN (1xxxxx - 9xxxxx)
+    if (pin.length === 6) {
+      return { fee: SHIPPING_RATES.INDIA.rate, label: 'All Over India', code: 'INDIA' };
+    }
+  }
+
+  // Default fallback
+  return { fee: SHIPPING_RATES.INDIA.rate, label: 'All Over India (Standard)', code: 'INDIA' };
+}
 
 function formatINR(amount) {
   return '₹' + Number(amount).toLocaleString('en-IN');
@@ -342,6 +394,38 @@ function setupEventListeners() {
       } else {
         showToast('Invalid code. Try "MEGHA10"');
       }
+    });
+  }
+
+  // Shipping Pincode and Country/Zone Selection
+  const shippingPincodeInput = document.getElementById('shippingPincodeInput');
+  const shippingCountrySelect = document.getElementById('shippingCountrySelect');
+
+  if (shippingPincodeInput) {
+    if (currentShippingPincode) shippingPincodeInput.value = currentShippingPincode;
+    shippingPincodeInput.addEventListener('input', (e) => {
+      currentShippingPincode = e.target.value.trim();
+      localStorage.setItem('gnapakalu_pincode', currentShippingPincode);
+      if (shippingCountrySelect && currentShippingPincode) {
+        shippingCountrySelect.value = 'auto';
+        currentShippingZone = 'auto';
+        localStorage.setItem('gnapakalu_zone', 'auto');
+      }
+      updateCartUI();
+    });
+  }
+
+  if (shippingCountrySelect) {
+    if (currentShippingZone) shippingCountrySelect.value = currentShippingZone;
+    shippingCountrySelect.addEventListener('change', (e) => {
+      currentShippingZone = e.target.value;
+      localStorage.setItem('gnapakalu_zone', currentShippingZone);
+      if (currentShippingZone !== 'auto' && shippingPincodeInput) {
+        shippingPincodeInput.value = '';
+        currentShippingPincode = '';
+        localStorage.removeItem('gnapakalu_pincode');
+      }
+      updateCartUI();
     });
   }
 
@@ -546,11 +630,11 @@ function renderProducts() {
 
           <div class="product-pricing-row">
             <div class="price-box">
-              <div style="display: flex; align-items: baseline; gap: 0.45rem;">
-                <span class="current-price">${formatINR(item.offerPrice)}</span>
+              <span class="current-price">${formatINR(item.offerPrice)}</span>
+              <div class="price-strike-line">
                 <span class="original-price">${formatINR(item.originalPrice)}</span>
+                <span class="save-tag">Save ${formatINR(savings)}</span>
               </div>
-              <span style="font-size: 0.72rem; color: #10b981; font-weight: 700;">Save ${formatINR(savings)}</span>
             </div>
             
             <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
@@ -732,10 +816,25 @@ function updateCartUI() {
   if (appliedPromo) {
     discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
   }
-  const grandTotal = Math.max(0, subtotal - discount);
+
+  // Calculate dynamic courier charge
+  const shippingInfo = getShippingDetails(currentShippingPincode, currentShippingZone);
+  const courierCharge = shippingInfo.fee;
+  const grandTotal = Math.max(0, subtotal - discount + courierCharge);
 
   if (subtotalElem) subtotalElem.textContent = formatINR(subtotal);
   if (totalElem) totalElem.textContent = formatINR(grandTotal);
+
+  // Update dynamic shipping rate line and notice badge
+  const cartDeliveryCharge = document.getElementById('cartDeliveryCharge');
+  if (cartDeliveryCharge) {
+    cartDeliveryCharge.textContent = formatINR(courierCharge);
+  }
+
+  const shippingZoneBadge = document.getElementById('shippingZoneBadge');
+  if (shippingZoneBadge) {
+    shippingZoneBadge.innerHTML = `📦 ${shippingInfo.label}: <strong>${formatINR(courierCharge)}/-</strong>`;
+  }
 
   if (discountRow && discountElem) {
     if (appliedPromo && discount > 0) {
@@ -747,15 +846,8 @@ function updateCartUI() {
   }
 
   if (shippingStatus && shippingFill) {
-    const diff = FREE_SHIPPING_THRESHOLD_INR - subtotal;
-    if (diff <= 0) {
-      shippingStatus.innerHTML = `🎉 <strong>Congratulations!</strong> You have qualified for Free Express Delivery!`;
-      shippingFill.style.width = '100%';
-    } else {
-      const pct = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD_INR) * 100));
-      shippingStatus.innerHTML = `Add <strong>${formatINR(diff)}</strong> more for <strong>Free Express Delivery</strong>`;
-      shippingFill.style.width = `${pct}%`;
-    }
+    shippingStatus.innerHTML = `📍 <strong>Courier to ${shippingInfo.label}:</strong> ${formatINR(courierCharge)}/- applied`;
+    shippingFill.style.width = '100%';
   }
 }
 
@@ -809,10 +901,14 @@ function openQuickView(productId) {
         <span class="gender-pill" style="margin-bottom: 0.5rem; display: inline-block;">${item.category} • ${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
         <h2>${item.name}</h2>
         
-        <div class="quickview-price" style="margin: 0.75rem 0;">
-          <span style="font-size: 1.6rem; font-weight: 800; color: var(--color-primary-dark);">${formatINR(item.offerPrice)}</span>
-          <span style="font-size: 1.05rem; text-decoration: line-through; color: var(--color-text-light); margin-left: 0.6rem;">${formatINR(item.originalPrice)}</span>
-          <span style="font-size: 0.8rem; background: var(--color-accent-pink); color: #fff; padding: 0.2rem 0.5rem; border-radius: var(--radius-full); margin-left: 0.6rem;">Save ${formatINR(savings)} (${discountPercent}% OFF)</span>
+        <div class="quickview-price-box" style="margin: 0.75rem 0;">
+          <div style="font-size: 1.7rem; font-weight: 800; color: var(--color-primary-dark); line-height: 1.1;">
+            ${formatINR(item.offerPrice)}
+          </div>
+          <div class="price-strike-line" style="margin-top: 0.25rem;">
+            <span class="original-price" style="font-size: 0.95rem;">${formatINR(item.originalPrice)}</span>
+            <span class="save-tag" style="font-size: 0.8rem; background: var(--color-accent-pink); color: #fff; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Save ${formatINR(savings)} (${discountPercent}% OFF)</span>
+          </div>
         </div>
 
         <p class="quickview-desc">${item.description}</p>
@@ -854,7 +950,13 @@ function handleCheckout() {
   }
 
   const orderNum = Math.floor(100000 + Math.random() * 900000);
-  const total = document.getElementById('cartTotal')?.textContent || '₹0';
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  let discount = 0;
+  if (appliedPromo) {
+    discount = Math.round(subtotal * (appliedPromo.discountPercent / 100));
+  }
+  const shippingInfo = getShippingDetails(currentShippingPincode, currentShippingZone);
+  const total = formatINR(Math.max(0, subtotal - discount + shippingInfo.fee));
 
   closeCart();
 
@@ -862,11 +964,11 @@ function handleCheckout() {
   if (!content) return;
 
   content.innerHTML = `
-    <div style="padding: 3rem 2rem; text-align: center;">
+    <div style="padding: 2.5rem 1.5rem; text-align: center;">
       <div style="width: 72px; height: 72px; background: var(--color-primary-soft); color: var(--color-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">
         ✨
       </div>
-      <h2 style="font-family: var(--font-serif); font-size: 2rem; margin-bottom: 0.5rem;">Order Placed Successfully!</h2>
+      <h2 style="font-family: var(--font-serif); font-size: 1.9rem; margin-bottom: 0.5rem;">Order Placed Successfully!</h2>
       <p style="color: var(--color-text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">
         Thank you for supporting <strong>Gnapakalu by Megha</strong>! Your pieces are entering velvet packaging.
       </p>
@@ -877,11 +979,19 @@ function handleCheckout() {
           <strong>#GNAP-${orderNum}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
-          <span style="color: var(--color-text-muted);">Total Amount:</span>
-          <strong>${total}</strong>
+          <span style="color: var(--color-text-muted);">Courier Destination:</span>
+          <strong>${shippingInfo.label}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+          <span style="color: var(--color-text-muted);">Courier Fee:</span>
+          <strong>${formatINR(shippingInfo.fee)}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; border-top: 1px dashed var(--color-border); padding-top: 0.4rem;">
+          <span style="color: var(--color-text-muted);">Total Paid:</span>
+          <strong style="color: var(--color-primary-dark); font-size: 1.05rem;">${total}</strong>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--color-text-muted);">Express Delivery:</span>
+          <span style="color: var(--color-text-muted);">Estimated Delivery:</span>
           <strong>2-4 Business Days</strong>
         </div>
       </div>

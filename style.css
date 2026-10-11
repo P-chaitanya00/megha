@@ -1141,12 +1141,27 @@ a {
   font-size: 1.25rem;
   font-weight: 800;
   color: var(--color-text-main);
+  line-height: 1.1;
+}
+
+.price-strike-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
 }
 
 .original-price {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   text-decoration: line-through;
-  color: var(--color-text-light);
+  color: #9482a3;
+  font-weight: 600;
+}
+
+.save-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #059669;
 }
 
 .add-to-cart-btn {
@@ -1553,6 +1568,70 @@ a {
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 600;
+}
+
+/* Shipping & Courier Rate Calculator Box */
+.shipping-calculator-box {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.shipping-calc-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.45rem;
+}
+
+.shipping-input-group {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.shipping-pincode-input {
+  width: 50%;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-main);
+}
+
+.shipping-pincode-input:focus {
+  border-color: var(--color-primary);
+  background: #ffffff;
+}
+
+.shipping-country-select {
+  width: 50%;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-main);
+  cursor: pointer;
+}
+
+.shipping-zone-notice {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .summary-row {
