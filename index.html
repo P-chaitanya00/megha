@@ -412,7 +412,7 @@
   </footer>
 
   <!-- SLIDE-OUT CART DRAWER -->
-  <div class="cart-overlay" id="cartOverlay"></div>
+  <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
   <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping Bag Drawer">
     <div class="cart-header">
       <h3>
@@ -423,7 +423,7 @@
         </svg>
         <span>Your Shopping Bag</span>
       </h3>
-      <button class="cart-close-btn" id="cartCloseBtn" aria-label="Close Bag">✕</button>
+      <button type="button" class="cart-close-btn" id="cartCloseBtn" onclick="closeCart()" aria-label="Close Bag">✕</button>
     </div>
 
     <div class="shipping-meter">

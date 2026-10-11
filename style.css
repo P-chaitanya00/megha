@@ -1406,13 +1406,30 @@ a {
 }
 
 .cart-close-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: var(--color-text-main);
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s ease;
+  z-index: 10;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cart-close-btn:hover,
+.cart-close-btn:active {
+  background: rgba(236, 72, 153, 0.15);
+  color: var(--color-accent-pink);
+  transform: rotate(90deg) scale(1.08);
 }
 
 .shipping-meter {

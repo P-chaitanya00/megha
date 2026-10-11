@@ -852,14 +852,39 @@ function updateCartUI() {
 }
 
 function openCart() {
-  document.getElementById('cartDrawer')?.classList.add('open');
-  document.getElementById('cartOverlay')?.classList.add('open');
+  const drawer = document.getElementById('cartDrawer');
+  const overlay = document.getElementById('cartOverlay');
+  if (drawer) {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+  if (overlay) {
+    overlay.classList.add('open');
+  }
+  document.body.style.overflow = 'hidden';
 }
 
 function closeCart() {
-  document.getElementById('cartDrawer')?.classList.remove('open');
-  document.getElementById('cartOverlay')?.classList.remove('open');
+  const drawer = document.getElementById('cartDrawer');
+  const overlay = document.getElementById('cartOverlay');
+  if (drawer) {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+  if (overlay) {
+    overlay.classList.remove('open');
+  }
+  document.body.style.overflow = '';
 }
+
+// Global escape key listener to close cart drawer and quick view modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    closeCart();
+    closeSidebarDrawer();
+    closeModal();
+  }
+});
 
 // WISHLIST
 function toggleWishlist(productId) {
