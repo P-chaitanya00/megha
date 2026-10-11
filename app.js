@@ -17,6 +17,22 @@
 // W (Women hampers)         -> w (women)
 // M (Men hampers)           -> m (men)
 
+// MASTER CATEGORIES LIST (Always available across menu, drawer and filter chips):
+const ALL_CATEGORIES = [
+  { name: 'Antitarnish jewellery', gender: 'both' },
+  { name: 'Traditional jewellery', gender: 'w' },
+  { name: 'Resin art', gender: 'both' },
+  { name: 'Paintings', gender: 'both' },
+  { name: 'Handmade bangles', gender: 'w' },
+  { name: 'Scented candles', gender: 'both' },
+  { name: 'Scoop', gender: 'w' },
+  { name: 'Dice', gender: 'w' },
+  { name: 'Women hampers', gender: 'w' },
+  { name: 'Men hampers', gender: 'm' },
+  { name: 'Special gifts', gender: 'both' },
+  { name: 'New launches', gender: 'both' }
+];
+
 const PRODUCTS = [
   {
     id: 'anti_heart_chain',
@@ -36,7 +52,7 @@ const PRODUCTS = [
     category: 'Antitarnish jewellery',
     gender: 'w',
     offerPrice: 349,
-    originalPrice: 549, // 349 + 200 rule
+    originalPrice: 549,
     badge: 'Stainless Steel',
     image: 'assets/products/bamboo_bangle_black.jpg',
     description: 'Minimalist luxury bamboo segment joint bangle crafted in anti-tarnish waterproof stainless steel. Features a secure push clasp mechanism. Available in Jet Black, Rich Gold, and Ivory White.',
@@ -46,12 +62,65 @@ const PRODUCTS = [
       { name: 'Gold', color: '#d4af37', image: 'assets/products/bamboo_bangle_gold.jpg' },
       { name: 'White', color: '#ffffff', image: 'assets/products/bamboo_bangle_white.jpg' }
     ]
+  },
+  {
+    id: 'blood_gold_resin_bangles',
+    name: 'Royal Blood Red & 24K Gold Leaf Resin Bangles (Pair)',
+    category: 'Resin art',
+    gender: 'w',
+    offerPrice: 799,
+    originalPrice: 999, // 799 + 200
+    badge: 'Artisan Resin',
+    image: 'assets/products/blood_resin_bangles.jpg',
+    description: 'Handcrafted luxury crystal resin bangles infused with rich royal blood red pigment and sparkling 24K gold foil flakes. Smooth, glossy glass-like finish that never fades or tarnishes.',
+    tags: ['Blood Red Bangles', 'Gold Leaf', 'Handmade Resin Art', 'Artisan Pair']
+  },
+  {
+    id: 'ruby_emerald_flora_bangle',
+    name: 'Ruby & Emerald Crystal Floral Snake Chain Bangle',
+    category: 'Antitarnish jewellery',
+    gender: 'w',
+    offerPrice: 499,
+    originalPrice: 699, // 499 + 200
+    badge: 'Anti-Tarnish',
+    image: 'assets/products/ruby_emerald_flora_bangle.jpg',
+    description: 'Exquisite 18K gold-finished cable snake chain bangle studded with alternating faceted ruby red and emerald green crystal petals. Premium anti-tarnish waterproof coating.',
+    tags: ['Ruby Emerald', 'Floral Bangle', 'Anti-Tarnish', 'Festive Luxury']
+  },
+  {
+    id: 'tulip_flower_pendant_chain',
+    name: 'Blossoming Tulip Crystal Flower Pendant Necklace',
+    category: 'Antitarnish jewellery',
+    gender: 'w',
+    offerPrice: 299,
+    originalPrice: 499, // 299 + 200
+    badge: 'Bestseller',
+    image: 'assets/products/tulip_pendant_red.jpg',
+    description: 'Delicate blooming tulip teardrop pendant necklace in 18K gold chain with emerald crystal leaves. Choose between Crimson Red Tulip and Pastel Pink Tulip.',
+    tags: ['Tulip Pendant', 'Waterproof Chain', 'Floral Jewellery', 'Color Variants'],
+    variants: [
+      { name: 'Red', color: '#dc2626', image: 'assets/products/tulip_pendant_red.jpg' },
+      { name: 'Pink', color: '#f472b6', image: 'assets/products/tulip_pendant_pink.jpg' }
+    ]
+  },
+  {
+    id: 'tulip_twin_charm_bracelet',
+    name: 'Dual Tulip Bud Sliding Bolo Snake Chain Bracelet',
+    category: 'Antitarnish jewellery',
+    gender: 'w',
+    offerPrice: 399,
+    originalPrice: 599, // 399 + 200
+    badge: 'Adjustable Bolo',
+    image: 'assets/products/tulip_adjustable_bracelet.jpg',
+    description: 'Elegant adjustable sliding bolo snake chain bracelet adorned with twin dangling crimson ruby tulip bud charms with emerald enamel accents. Fits all wrist sizes comfortably.',
+    tags: ['Tulip Bracelet', 'Adjustable Bolo', 'Ruby Charms', 'Anti-Tarnish']
   }
 ];
 
 // Active color selection state mapped by product ID
 const selectedProductVariants = {
-  bamboo_joint_bangle: { name: 'Black', color: '#1a1a1a', image: 'assets/products/bamboo_bangle_black.jpg' }
+  bamboo_joint_bangle: { name: 'Black', color: '#1a1a1a', image: 'assets/products/bamboo_bangle_black.jpg' },
+  tulip_flower_pendant_chain: { name: 'Red', color: '#dc2626', image: 'assets/products/tulip_pendant_red.jpg' }
 };
 
 // STATE MANAGEMENT
@@ -295,9 +364,16 @@ function openCategoryScreen(categoryName, customTitle) {
   currentScreen = 'catalog';
   activeCategoryFilter = categoryName;
 
-  // Infer gender based on category
-  const item = PRODUCTS.find(p => p.category === categoryName);
-  activeGenderTab = item ? item.gender : 'all';
+  // Infer gender based on category definition or products
+  const catDef = ALL_CATEGORIES.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+  const item = PRODUCTS.find(p => p.category.toLowerCase() === categoryName.toLowerCase());
+  if (catDef) {
+    activeGenderTab = catDef.gender === 'both' ? 'all' : catDef.gender;
+  } else if (item) {
+    activeGenderTab = item.gender;
+  } else {
+    activeGenderTab = 'all';
+  }
 
   document.getElementById('homeView').style.display = 'none';
   document.getElementById('catalogView').style.display = 'block';
@@ -314,23 +390,23 @@ function openCategoryScreen(categoryName, customTitle) {
 }
 
 // ===============================================================
-// SUBCATEGORY FILTER CHIPS (IN SCREEN 2) - ONLY SPECIFIC CATEGORIES
+// SUBCATEGORY FILTER CHIPS (IN SCREEN 2) - ALL CATEGORIES
 // ===============================================================
 function renderSubcategoryFilterChips() {
   const container = document.getElementById('subcategoriesFilterBar');
   if (!container) return;
 
-  const relevantProducts = PRODUCTS.filter(p => {
-    if (activeGenderTab === 'w') return p.gender === 'w' || p.gender === 'both';
-    if (activeGenderTab === 'm') return p.gender === 'm' || p.gender === 'both';
-    return p.gender === 'w' || p.gender === 'both';
-  });
-
-  // Only specific categories for that collection (Zero 'All' chip)
-  const categories = [...new Set(relevantProducts.map(p => p.category))];
+  // Show all categories mapped to the current gender tab
+  const categories = ALL_CATEGORIES
+    .filter(c => {
+      if (activeGenderTab === 'w') return c.gender === 'w' || c.gender === 'both';
+      if (activeGenderTab === 'm') return c.gender === 'm' || c.gender === 'both';
+      return true;
+    })
+    .map(c => c.name);
 
   container.innerHTML = categories.map(cat => {
-    const isSelected = (cat === activeCategoryFilter);
+    const isSelected = (cat.toLowerCase() === activeCategoryFilter.toLowerCase());
     return `
       <button class="subcat-chip ${isSelected ? 'active' : ''}" onclick="selectSubcategoryChip('${cat}')">
         ${cat}
@@ -539,12 +615,18 @@ function renderDrawerCategories() {
     return p.gender === 'w' || p.gender === 'both';
   });
 
-  // Only specific categories for that gender (No 'All Creations')
-  const categories = [...new Set(relevantProducts.map(p => p.category))];
+  // Pull all categories according to gender tab
+  const categories = ALL_CATEGORIES
+    .filter(c => {
+      if (drawerGenderTab === 'w') return c.gender === 'w' || c.gender === 'both';
+      if (drawerGenderTab === 'm') return c.gender === 'm' || c.gender === 'both';
+      return true;
+    })
+    .map(c => c.name);
 
   container.innerHTML = categories.map(cat => {
-    const isSelected = (cat === activeCategoryFilter);
-    const count = relevantProducts.filter(p => p.category === cat).length;
+    const isSelected = (cat.toLowerCase() === activeCategoryFilter.toLowerCase());
+    const count = relevantProducts.filter(p => p.category.toLowerCase() === cat.toLowerCase()).length;
 
     return `
       <li class="drawer-cat-item ${isSelected ? 'active' : ''}" onclick="handleDrawerCategoryClick('${cat}')">
