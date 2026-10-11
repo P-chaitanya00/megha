@@ -2359,20 +2359,22 @@ a {
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(15, 7, 25, 0.72);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  background: rgba(15, 7, 25, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s ease;
 }
 
 .order-placed-glass-overlay.open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 

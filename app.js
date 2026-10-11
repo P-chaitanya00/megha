@@ -1509,21 +1509,25 @@ async function dispatchOrderEmail(order) {
 }
 
 // Order Submission & Verification
+// Order Submission & Verification
 function submitCustomerOrder(event) {
-  if (event) event.preventDefault();
+  if (event) {
+    event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+  }
 
   if (cart.length === 0) {
     showToast('Your bag is empty!');
     return;
   }
 
-  const name = document.getElementById('custName')?.value.trim();
+  const name = (document.getElementById('custName')?.value || '').trim();
   const rawPhone = document.getElementById('custPhone')?.value || '';
   const phone = rawPhone.replace(/\D/g, '').slice(-10);
-  const houseNo = document.getElementById('custHouseNo')?.value.trim();
-  const address = document.getElementById('custAddress')?.value.trim();
-  const landmark = document.getElementById('custLandmark')?.value.trim();
-  const state = document.getElementById('custState')?.value.trim();
+  const houseNo = (document.getElementById('custHouseNo')?.value || '').trim();
+  const address = (document.getElementById('custAddress')?.value || '').trim();
+  const landmark = (document.getElementById('custLandmark')?.value || '').trim();
+  const state = (document.getElementById('custState')?.value || '').trim();
   const rawPincode = document.getElementById('custPincode')?.value || '';
   const pincode = rawPincode.replace(/\D/g, '').slice(0, 6);
   const selectedPaymentApp = document.querySelector('input[name="paymentAppChoice"]:checked')?.value || 'PhonePe';
@@ -1582,6 +1586,7 @@ function submitCustomerOrder(event) {
         utrEl.style.boxShadow = '';
       }, 4000);
     }
+    return; // STOP execution so order is not placed without valid payment UTR
   }
 
   // Calculate final shipping strictly via backend pincode checker
@@ -1697,16 +1702,33 @@ function submitCustomerOrder(event) {
     `Please confirm the order and dispatch details.`
   );
 
-  // Show dedicated glass effect modal in middle of screen
-  showOrderPlacedGlassModal(orderPayload, waOrderText);
+  // Smoothly open Order Placed Modal with gentle transition delay
+  setTimeout(() => {
+    showOrderPlacedGlassModal(orderPayload, waOrderText);
+  }, 160);
 }
 
 // DEDICATED ORDER PLACED GLASS EFFECT MODAL HANDLERS
+let orderPlacedModalCanClose = false;
+
+function handleOrderPlacedOverlayClick(e) {
+  if (!orderPlacedModalCanClose) return; // Discard rapid ghost-clicks / touch releases right after opening
+  if (e && e.target && e.target.id === 'orderPlacedModalOverlay') {
+    closeOrderPlacedModal();
+  }
+}
+
 function showOrderPlacedGlassModal(order, waOrderText) {
   const overlay = document.getElementById('orderPlacedModalOverlay');
   const receiptContainer = document.getElementById('orderGlassReceiptContent');
   const custMsg = document.getElementById('orderGlassCustomerMsg');
   const waBtn = document.getElementById('orderGlassWaBtn');
+
+  // Prevent immediate accidental close from touch events
+  orderPlacedModalCanClose = false;
+  setTimeout(() => {
+    orderPlacedModalCanClose = true;
+  }, 1200);
 
   if (custMsg) {
     custMsg.innerHTML = `Thank you <strong>${order.customerName}</strong>! Your pieces are entering velvet gift packaging at <strong>Gnapakalu by Megha</strong>.`;
@@ -1762,10 +1784,7 @@ function showOrderPlacedGlassModal(order, waOrderText) {
   }
 
   if (overlay) {
-    overlay.style.display = 'flex';
-    requestAnimationFrame(() => {
-      overlay.classList.add('open');
-    });
+    overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
 }
@@ -1774,10 +1793,7 @@ function closeOrderPlacedModal() {
   const overlay = document.getElementById('orderPlacedModalOverlay');
   if (overlay) {
     overlay.classList.remove('open');
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      document.body.style.overflow = '';
-    }, 320);
+    document.body.style.overflow = '';
   }
 }
 

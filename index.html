@@ -515,7 +515,7 @@
         <p class="checkout-modal-sub">Please fill in your address for safe doorstep courier delivery.</p>
       </div>
 
-      <form id="checkoutForm" onsubmit="submitCustomerOrder(event)" class="checkout-form">
+      <form id="checkoutForm" action="javascript:void(0);" onsubmit="submitCustomerOrder(event); return false;" class="checkout-form">
         <div class="checkout-form-grid">
           <!-- Full Name -->
           <div class="checkout-field-col">
@@ -742,7 +742,7 @@
           </div>
         </div>
 
-        <button type="submit" class="checkout-btn order-submit-btn" id="btnPlaceOrder" onclick="submitCustomerOrder(event)">
+        <button type="button" class="checkout-btn order-submit-btn" id="btnPlaceOrder" onclick="submitCustomerOrder(event)">
           <span>Place Order</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"></polyline>
@@ -755,7 +755,7 @@
   <!-- ===============================================================
        DEDICATED ORDER PLACED NOTIFICATION (GLASS EFFECT BG BLUR)
        =============================================================== -->
-  <div class="order-placed-glass-overlay" id="orderPlacedModalOverlay" onclick="if(event.target.id==='orderPlacedModalOverlay') closeOrderPlacedModal();" style="display: none;">
+  <div class="order-placed-glass-overlay" id="orderPlacedModalOverlay" onclick="handleOrderPlacedOverlayClick(event)">
     <div class="order-placed-glass-card" id="orderPlacedCard">
       <button type="button" class="order-glass-close-btn" onclick="closeOrderPlacedModal()" aria-label="Close">✕</button>
 
