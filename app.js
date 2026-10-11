@@ -1133,7 +1133,7 @@ function showToast(message) {
 
 // ===============================================================
 // STORE OWNER MANAGEMENT PORTAL PIN & CLOUD CROSS-DEVICE SYNC
-// (Isolated dedicated cloud endpoint, 100% separate from KAFF)
+// (Dedicated Gnapakalu cloud endpoint for cross-device PIN sync)
 // ===============================================================
 const CLOUD_KV_APP_KEY = '0l303heb';
 const CLOUD_PIN_KEY = 'portal_pin';
