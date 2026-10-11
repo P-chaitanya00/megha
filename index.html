@@ -867,11 +867,17 @@
       <!-- Header -->
       <div class="mgmt-modal-header">
         <div class="mgmt-header-title-box">
-          <span class="mgmt-badge-live">LIVE STORE DASHBOARD</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
+            <span class="mgmt-badge-live">LIVE STORE DASHBOARD</span>
+            <span class="mgmt-badge-live" id="mgmtSyncStatusBadge" style="background: rgba(16, 185, 129, 0.18); color: #047857; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 700;">🟢 LIVE CLOUD SYNCED</span>
+          </div>
           <h2 class="mgmt-title">Gnapakalu Management Portal</h2>
           <p class="mgmt-subtitle">Add products, edit live items, adjust stock counts & upload images</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.65rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+          <button type="button" class="mgmt-change-pin-btn" onclick="syncProductsFromCloud(true)" title="Force Refresh Products From Cloud" style="background: rgba(16, 185, 129, 0.18); border-color: rgba(16, 185, 129, 0.4); color: #047857;">
+            <span>🔄 Sync Cloud</span>
+          </button>
           <button type="button" class="mgmt-change-pin-btn" onclick="openChangePinModal()" title="Change Management PIN">
             <span>🔐 Change PIN</span>
           </button>

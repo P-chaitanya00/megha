@@ -149,6 +149,112 @@ function saveProducts() {
   renderDrawerCategories();
   renderSubcategoryFilterChips();
   updateMgmtLiveBadge();
+  syncProductsToCloud(PRODUCTS);
+}
+
+// ===============================================================
+// CLOUD PRODUCT SYNCHRONIZATION ENGINE (REAL-TIME CROSS-DEVICE)
+// Synchronizes all added, edited, and stock-updated products across all devices
+// ===============================================================
+const CLOUD_SYNC_API = '/api/sync-products';
+const CLOUD_GIST_URL = 'https://api.github.com/gists/76c5b055af394e1a6b4e7f6b75f34ed4';
+let isSyncingProducts = false;
+
+async function syncProductsFromCloud(isUserInitiated = false) {
+  if (isSyncingProducts) return;
+  isSyncingProducts = true;
+  try {
+    const badge = document.getElementById('mgmtSyncStatusBadge');
+    if (badge && isUserInitiated) badge.textContent = '🔄 Syncing...';
+
+    let cloudProducts = null;
+
+    // 1. Try Vercel Serverless Function first
+    try {
+      const res = await fetch(CLOUD_SYNC_API + '?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.products) && json.products.length > 0) {
+          cloudProducts = json.products;
+        }
+      }
+    } catch (e) {
+      console.warn('API sync endpoint fallback to Gist:', e);
+    }
+
+    // 2. Direct GitHub Gist fallback
+    if (!cloudProducts) {
+      try {
+        const gRes = await fetch(CLOUD_GIST_URL + '?t=' + Date.now(), { cache: 'no-store' });
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          const fileContent = gData.files && gData.files['gnapakalu_products.json'] && gData.files['gnapakalu_products.json'].content;
+          if (fileContent) {
+            const parsed = JSON.parse(fileContent);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              cloudProducts = parsed;
+            }
+          }
+        }
+      } catch (ge) {
+        console.warn('Gist direct sync error:', ge);
+      }
+    }
+
+    if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+      // Ensure all items have valid numbers & categories registered
+      cloudProducts.forEach(p => {
+        if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
+        if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
+          ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+        }
+      });
+
+      // Update in-memory state & localStorage cache
+      PRODUCTS = cloudProducts;
+      localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+
+      // Re-render UI across the application
+      renderProducts();
+      renderDrawerCategories();
+      renderSubcategoryFilterChips();
+      updateMgmtLiveBadge();
+      if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
+        renderMgmtProductsTable();
+      }
+
+      if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
+      if (isUserInitiated) showToast(`Synced ${PRODUCTS.length} live products from cloud! ☁️`);
+      console.log('✅ Synchronized', PRODUCTS.length, 'live products from cloud across devices.');
+    }
+  } catch (err) {
+    console.warn('syncProductsFromCloud exception:', err);
+  } finally {
+    isSyncingProducts = false;
+  }
+}
+
+async function syncProductsToCloud(productsList) {
+  try {
+    const badge = document.getElementById('mgmtSyncStatusBadge');
+    if (badge) badge.textContent = '☁️ Syncing across all devices...';
+
+    // 1. Send to serverless API
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products: productsList })
+    });
+
+    if (res.ok) {
+      if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
+      console.log('✅ Products synced to cloud successfully.');
+    } else {
+      console.warn('Serverless sync error status:', res.status);
+    }
+  } catch (err) {
+    console.error('Failed to sync products to cloud:', err);
+  }
 }
 
 // Active color selection state mapped by product ID
@@ -229,12 +335,20 @@ function formatINR(amount) {
 // INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
   syncPinFromCloud();
+  syncProductsFromCloud(); // Real-time sync across devices on startup
   renderDrawerCategories();
   updateCartUI();
   updateWishlistCount();
   updateMgmtLiveBadge();
   updateMgmtOrdersCount();
   setupEventListeners();
+});
+
+// Auto-sync when user returns to website or switches tabs
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncProductsFromCloud();
+  }
 });
 
 // LISTENERS
@@ -1719,6 +1833,7 @@ async function syncPinFromCloud() {
 
 // MANAGEMENT PORTAL ENTRY POINT
 function openManagementPortal() {
+  syncProductsFromCloud();
   if (isOwnerAuthenticated) {
     showPortalModal();
   } else {
@@ -2073,18 +2188,84 @@ function autoCalculateOriginalPrice(val) {
   }
 }
 
-function handleMgmtImageUpload(e) {
+// Compress image file to standard dimensions for ultra-fast loading across mobile and cloud
+function compressImageFile(file, maxWidth = 700, maxHeight = 700, quality = 0.75) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(ev.target.result);
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleMgmtImageUpload(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    mgmtUploadedImageDataUrl = event.target.result;
-    showMgmtImagePreview(mgmtUploadedImageDataUrl);
+  const placeholder = document.getElementById('mgmtImagePreviewPlaceholder');
+  if (placeholder) {
+    placeholder.textContent = '⏳ Processing image...';
+    placeholder.style.display = 'block';
+  }
+
+  try {
+    // Compress immediately client-side for rapid rendering
+    const compressedDataUrl = await compressImageFile(file, 700, 700, 0.75);
+    mgmtUploadedImageDataUrl = compressedDataUrl;
+    showMgmtImagePreview(compressedDataUrl);
+
+    // Upload to Freeimage CDN in background for clean short CDN URL
+    const formData = new FormData();
+    formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
+    formData.append('action', 'upload');
+    formData.append('source', compressedDataUrl);
+    formData.append('format', 'json');
+
+    fetch('https://freeimage.host/api/1/upload', {
+      method: 'POST',
+      body: formData
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.image && data.image.url) {
+          mgmtUploadedImageDataUrl = data.image.url;
+          console.log('Image uploaded to CDN:', data.image.url);
+        }
+      })
+      .catch(err => {
+        console.warn('CDN upload fallback to compressed image:', err);
+      });
+
     const urlInput = document.getElementById('mgmtProdImageUrl');
     if (urlInput) urlInput.value = '';
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.error('Image compression error:', err);
+  }
 }
 
 function handleMgmtImageUrl(url) {
