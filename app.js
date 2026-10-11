@@ -1252,6 +1252,15 @@ function selectPaymentApp(appName, cardId) {
     const radio = card.querySelector('input[type="radio"]');
     if (radio) radio.checked = true;
   }
+  const utrReqStar = document.getElementById('utrReqStar');
+  const utrInput = document.getElementById('custUtrNumber');
+  if (appName === 'Cash on Delivery (COD)') {
+    if (utrReqStar) utrReqStar.style.display = 'none';
+    if (utrInput) utrInput.placeholder = 'Optional for COD orders';
+  } else {
+    if (utrReqStar) utrReqStar.style.display = 'inline';
+    if (utrInput) utrInput.placeholder = 'e.g. 329182749102 (12 digits)';
+  }
 }
 
 // Dispatches order details to Sridevigummadi37@gmail.com via Backend Serverless & FormSubmit API
@@ -1296,6 +1305,8 @@ async function dispatchOrderEmail(order) {
         Order_ID: order.orderId,
         Order_Date_Time: order.orderDate,
         Payment_App_Used: order.paymentApp,
+        Payment_UTR_Number: order.utrNumber || 'N/A',
+        Transaction_ID: order.transactionId || 'N/A',
         Payment_Status: order.paymentStatus,
         Customer_Name: order.customerName,
         Mobile_Number: order.customerPhone,
@@ -1375,6 +1386,15 @@ function submitCustomerOrder(event) {
     return;
   }
 
+  const utrNumber = document.getElementById('custUtrNumber')?.value.trim() || '';
+  const transactionId = document.getElementById('custTransactionId')?.value.trim() || '';
+
+  if (selectedPaymentApp !== 'Cash on Delivery (COD)' && (!utrNumber || utrNumber.length < 6)) {
+    showToast('Please enter the 12-digit Payment UTR / UPI Ref from your payment app');
+    document.getElementById('custUtrNumber')?.focus();
+    return;
+  }
+
   // Calculate final shipping strictly via backend pincode checker
   const shippingInfo = calculateShippingFromPincode(pincode, state);
 
@@ -1440,6 +1460,8 @@ function submitCustomerOrder(event) {
     grandTotal: grandTotal,
     grandTotalFormatted: formatINR(grandTotal),
     paymentApp: selectedPaymentApp,
+    utrNumber: utrNumber || (selectedPaymentApp === 'Cash on Delivery (COD)' ? 'COD / Cash' : 'N/A'),
+    transactionId: transactionId || utrNumber || 'N/A',
     paymentStatus: 'Payment Completed / Order Placed'
   };
 
@@ -1473,6 +1495,8 @@ function submitCustomerOrder(event) {
     `Landmark: ${landmark}\n` +
     `State: ${state} - PIN: ${pincode}\n\n` +
     `*💳 Payment Method / App:* ${selectedPaymentApp}\n` +
+    `*Payment UTR / Ref:* ${orderPayload.utrNumber}\n` +
+    (orderPayload.transactionId && orderPayload.transactionId !== 'N/A' && orderPayload.transactionId !== orderPayload.utrNumber ? `*Transaction ID:* ${orderPayload.transactionId}\n` : '') +
     `*Payment Status:* Payment Completed\n\n` +
     `*📦 Ordered Items:*\n` +
     orderedItemsBackup.map(i => `• ${i.name} (${i.selectedVariant || i.category}) x ${i.qty} = ${formatINR(i.price * i.qty)}`).join('\n') +
@@ -1510,6 +1534,16 @@ function submitCustomerOrder(event) {
             <span style="color: var(--color-text-muted);">Payment App Used:</span>
             <span class="mgmt-pay-app-pill">${selectedPaymentApp}</span>
           </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted);">Payment UTR / Ref No:</span>
+            <strong style="font-family: monospace; color: var(--color-primary-dark);">${orderPayload.utrNumber}</strong>
+          </div>
+          ${orderPayload.transactionId && orderPayload.transactionId !== 'N/A' && orderPayload.transactionId !== orderPayload.utrNumber ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+            <span style="color: var(--color-text-muted);">Transaction ID:</span>
+            <strong style="font-family: monospace; font-size: 0.8rem;">${orderPayload.transactionId}</strong>
+          </div>
+          ` : ''}
           <div style="margin-bottom: 0.45rem;">
             <span style="color: var(--color-text-muted); display: block; margin-bottom: 0.15rem;">Delivery Address:</span>
             <strong style="line-height: 1.4; display: block; color: var(--color-text-main);">
@@ -1527,7 +1561,7 @@ function submitCustomerOrder(event) {
 
           <div style="margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fdf2f8; border-radius: var(--radius-sm); border: 1px solid #fbcfe8; font-size: 0.76rem; color: #9d174d; display: flex; align-items: center; gap: 0.35rem;">
             <span>📬</span>
-            <span>Order details & payment report dispatched to: <strong>Sridevigummadi37@gmail.com</strong></span>
+            <span>Order details & payment UTR report dispatched to: <strong>Sridevigummadi37@gmail.com</strong></span>
           </div>
         </div>
 
@@ -1890,6 +1924,10 @@ function renderMgmtOrdersTable() {
               </td>
               <td>
                 <span class="mgmt-pay-app-pill">${o.paymentApp || 'UPI App'}</span>
+                <div style="font-size: 0.76rem; color: #334155; margin-top: 0.35rem; line-height: 1.35;">
+                  <div><strong>UTR:</strong> <span style="font-family: monospace; font-weight: 700; color: #0f172a;">${o.utrNumber || 'N/A'}</span></div>
+                  ${o.transactionId && o.transactionId !== 'N/A' && o.transactionId !== o.utrNumber ? `<div><strong>Txn:</strong> <span style="font-family: monospace;">${o.transactionId}</span></div>` : ''}
+                </div>
                 <div style="font-size: 1.05rem; font-weight: 800; color: var(--color-primary-dark); margin-top: 0.25rem;">
                   ${o.grandTotalFormatted || '₹' + o.grandTotal}
                 </div>

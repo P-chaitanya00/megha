@@ -642,6 +642,28 @@
           </div>
         </div>
 
+        <!-- Payment UTR / Transaction ID Input -->
+        <div class="checkout-utr-section" id="checkoutUtrSection">
+          <div class="checkout-form-grid" style="margin-top: 0.25rem;">
+            <div class="checkout-field-col">
+              <label for="custUtrNumber" class="checkout-label">
+                <span>Payment UTR / UPI Ref No.</span>
+                <span class="req-star" id="utrReqStar">*</span>
+              </label>
+              <input type="text" id="custUtrNumber" class="checkout-input" placeholder="e.g. 329182749102 (12 digits)" maxlength="24" autocomplete="off">
+              <small style="font-size: 0.72rem; color: var(--color-text-muted);">From your payment app receipt</small>
+            </div>
+            <div class="checkout-field-col">
+              <label for="custTransactionId" class="checkout-label">
+                <span>Transaction ID</span>
+                <span style="font-size: 0.72rem; color: var(--color-text-muted);">(Optional / App Ref)</span>
+              </label>
+              <input type="text" id="custTransactionId" class="checkout-input" placeholder="e.g. T261011195821..." maxlength="35" autocomplete="off">
+              <small style="font-size: 0.72rem; color: var(--color-text-muted);">UPI Transaction ID / Ref</small>
+            </div>
+          </div>
+        </div>
+
         <!-- Price Summary Breakdown -->
         <div class="checkout-summary-box">
           <div class="checkout-summary-title">Order & Payment Breakdown</div>

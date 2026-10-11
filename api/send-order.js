@@ -43,6 +43,8 @@ module.exports = async function handler(req, res) {
       Order_ID: order.orderId,
       Order_Date_Time: order.orderDate || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       Payment_App_Used: order.paymentApp || 'UPI App',
+      Payment_UTR_Number: order.utrNumber || 'N/A',
+      Transaction_ID: order.transactionId || 'N/A',
       Payment_Status: 'Payment Completed / Order Placed',
       Customer_Name: order.customerName,
       Mobile_Number: order.customerPhone,
