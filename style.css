@@ -3204,20 +3204,29 @@ a {
   display: flex;
   background: #fdfafc;
   border-bottom: 1px solid var(--color-border);
-  padding: 0.5rem 1.5rem 0;
-  gap: 0.75rem;
+  padding: 0.5rem 1.25rem 0;
+  gap: 0.65rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mgmt-tabs-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .mgmt-tab-btn {
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1.15rem;
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--color-text-muted);
   cursor: pointer;
   transition: var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mgmt-tab-btn:hover {
@@ -3443,19 +3452,41 @@ a {
   background: #fff1f2;
 }
 
-/* Inventory Tab Styles */
-.mgmt-inventory-controls {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+.mgmt-swipe-hint {
+  display: none;
+  font-size: 0.76rem;
+  color: var(--color-primary-dark);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .mgmt-swipe-hint {
+    display: block;
+  }
 }
 
 .mgmt-inventory-container {
   border: 1px solid var(--color-border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   background: #ffffff;
+  position: relative;
+  width: 100%;
+}
+
+#mgmtProductsTableWrapper,
+#mgmtOrdersTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mgmt-table {
@@ -3684,6 +3715,16 @@ a {
 }
 
 @media (max-width: 768px) {
+  .mgmt-modal-container {
+    width: 96%;
+    max-width: 100%;
+    max-height: 94vh;
+    border-radius: 18px;
+    margin: 0 auto;
+  }
+  .mgmt-tab-content {
+    padding: 1rem 0.85rem;
+  }
   .mgmt-form-grid {
     grid-template-columns: 1fr;
   }
@@ -3696,6 +3737,25 @@ a {
   }
   .mgmt-inventory-controls {
     grid-template-columns: 1fr;
+  }
+  /* Horizontal swipeable tables on mobile */
+  .mgmt-inventory-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: relative;
+    border-radius: 10px;
+  }
+  .mgmt-table {
+    min-width: 620px !important;
+  }
+  .mgmt-orders-table {
+    min-width: 750px !important;
+  }
+  .mgmt-table th,
+  .mgmt-table td,
+  .mgmt-orders-table th,
+  .mgmt-orders-table td {
+    white-space: normal;
   }
 }
 
