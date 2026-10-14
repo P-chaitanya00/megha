@@ -495,9 +495,9 @@
   </aside>
 
   <!-- QUICK VIEW & ORDER SUCCESS MODAL -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-container">
-      <button class="modal-close-btn" id="modalCloseBtn" aria-label="Close modal">✕</button>
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBackdrop(event)">
+    <div class="modal-container" onclick="event.stopPropagation()">
+      <button type="button" class="modal-close-btn" id="modalCloseBtn" onclick="closeModal(event)" aria-label="Close modal">✕</button>
       <div id="quickViewContent"></div>
     </div>
   </div>

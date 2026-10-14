@@ -1228,8 +1228,20 @@ function openQuickView(productId) {
   document.getElementById('modalOverlay')?.classList.add('open');
 }
 
-function closeModal() {
-  document.getElementById('modalOverlay')?.classList.remove('open');
+function closeModal(e) {
+  if (e) {
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  }
+  const overlay = document.getElementById('modalOverlay');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(e) {
+  if (e && e.target && e.target.id === 'modalOverlay') {
+    closeModal(e);
+  }
 }
 
 // ===============================================================
