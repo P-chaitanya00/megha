@@ -1105,6 +1105,7 @@ function closeCart() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'Esc') {
     closeCart();
+    closeWishlist();
     closeSidebarDrawer();
     closeModal();
     closeManagementPortal();
@@ -1126,11 +1127,95 @@ function toggleWishlist(productId) {
   localStorage.setItem('gnapakalu_wishlist', JSON.stringify(wishlist));
   updateWishlistCount();
   renderProducts();
+  renderWishlistUI();
 }
 
 function updateWishlistCount() {
+  const count = (Array.isArray(wishlist) ? wishlist.length : 0);
   const badge = document.getElementById('wishlistBadge');
-  if (badge) badge.textContent = wishlist.length;
+  if (badge) badge.textContent = count;
+  const drawerCount = document.getElementById('wishlistDrawerCount');
+  if (drawerCount) drawerCount.textContent = count;
+}
+
+function openWishlist() {
+  renderWishlistUI();
+  const drawer = document.getElementById('wishlistDrawer');
+  const overlay = document.getElementById('wishlistOverlay');
+  if (drawer) {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+  if (overlay) {
+    overlay.classList.add('open');
+  }
+  document.body.style.overflow = 'hidden';
+}
+
+function closeWishlist() {
+  const drawer = document.getElementById('wishlistDrawer');
+  const overlay = document.getElementById('wishlistOverlay');
+  if (drawer) {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+  if (overlay) {
+    overlay.classList.remove('open');
+  }
+  document.body.style.overflow = '';
+}
+
+function renderWishlistUI() {
+  const container = document.getElementById('wishlistItems');
+  if (!container) return;
+  updateWishlistCount();
+
+  const savedProducts = PRODUCTS.filter(p => wishlist.includes(p.id));
+
+  if (savedProducts.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 3.5rem 1rem; color: var(--color-text-muted);">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem;">💖</div>
+        <h4 style="font-family: var(--font-serif); font-size: 1.3rem; color: var(--color-text-main); margin-bottom: 0.35rem;">Your Wishlist is Empty</h4>
+        <p style="font-size: 0.85rem; line-height: 1.5; max-width: 280px; margin: 0 auto 1.5rem;">
+          Tap the heart icon on any product to save your favorite creations here!
+        </p>
+        <button type="button" class="mgmt-btn-primary" onclick="closeWishlist(); switchScreen('catalog');" style="display: inline-block;">
+          Explore Creations
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = savedProducts.map(p => {
+    const isOut = (typeof p.stock === 'number' && p.stock <= 0);
+    return `
+      <div class="cart-item" style="display: flex; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--color-border);">
+        <img src="${p.image}" alt="${p.name}" style="width: 70px; height: 70px; border-radius: 10px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0;">
+        <div style="flex: 1; min-width: 0;">
+          <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--color-text-main); line-height: 1.3; margin-bottom: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            ${p.name}
+          </h4>
+          <div style="font-size: 0.75rem; color: var(--color-primary-dark); font-weight: 600; margin-bottom: 0.35rem;">
+            ${p.category}
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+            <strong style="color: var(--color-primary-dark); font-size: 1rem;">${formatINR(p.offerPrice)}</strong>
+            <span style="font-size: 0.75rem; color: #9482a3; text-decoration: line-through;">${formatINR(p.originalPrice)}</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.45rem; align-items: flex-end;">
+          <button type="button" onclick="addToCart('${p.id}'); closeWishlist(); openCart();" style="background: var(--gradient-luxe); color: #fff; border: none; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap;">
+            Add to Bag
+          </button>
+          <button type="button" onclick="toggleWishlist('${p.id}')" style="background: transparent; border: none; color: #e11d48; font-size: 0.76rem; font-weight: 600; cursor: pointer; text-decoration: underline;" title="Remove">
+            Remove
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // QUICK VIEW MODAL

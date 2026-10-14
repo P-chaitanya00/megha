@@ -92,7 +92,7 @@
       <!-- Right: Wishlist, Cart & 3-Lines Categories Button -->
       <div class="header-actions">
         <!-- Wishlist -->
-        <button class="icon-btn" onclick="showToast('Saved to Wishlist: ' + wishlist.length + ' item(s)')" title="Wishlist" aria-label="Wishlist">
+        <button type="button" class="icon-btn" id="wishlistBtn" onclick="openWishlist()" title="Your Wishlist" aria-label="Your Wishlist">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
           </svg>
@@ -434,6 +434,21 @@
       </div>
     </div>
   </footer>
+
+  <!-- SLIDE-OUT WISHLIST DRAWER -->
+  <div class="cart-overlay wishlist-overlay" id="wishlistOverlay" onclick="closeWishlist()"></div>
+  <aside class="cart-drawer wishlist-drawer" id="wishlistDrawer" aria-label="Saved Wishlist Drawer">
+    <div class="cart-header">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+        <span>Your Wishlist (<span id="wishlistDrawerCount">0</span>)</span>
+      </h3>
+      <button type="button" class="cart-close-btn" id="wishlistCloseBtn" onclick="closeWishlist()" aria-label="Close Wishlist">✕</button>
+    </div>
+    <div class="cart-items" id="wishlistItems" style="flex: 1; overflow-y: auto; padding: 1.25rem;"></div>
+  </aside>
 
   <!-- SLIDE-OUT CART DRAWER -->
   <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
