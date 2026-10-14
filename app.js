@@ -189,14 +189,32 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         if (gRes.ok) {
           const gData = await gRes.json();
           const files = gData.files || {};
-          let p = [], o = [], s = { pin: '1234' };
-          try { if (files['gnapakalu_products.json']?.content) p = JSON.parse(files['gnapakalu_products.json'].content); } catch (e) {}
-          try { if (files['gnapakalu_orders.json']?.content) o = JSON.parse(files['gnapakalu_orders.json'].content); } catch (e) {}
-          try { if (files['gnapakalu_settings.json']?.content) s = JSON.parse(files['gnapakalu_settings.json'].content); } catch (e) {}
+          
+          async function parseGistFile(fileObj) {
+            if (!fileObj) return null;
+            if (!fileObj.truncated && fileObj.content) {
+              try { return JSON.parse(fileObj.content); } catch (e) {}
+            }
+            if (fileObj.raw_url) {
+              try {
+                const r = await fetch(fileObj.raw_url, { cache: 'no-store' });
+                if (r.ok) return await r.json();
+              } catch (e) {}
+            }
+            if (fileObj.content) {
+              try { return JSON.parse(fileObj.content); } catch (e) {}
+            }
+            return null;
+          }
+
+          const p = (await parseGistFile(files['gnapakalu_products.json'])) || [];
+          const o = (await parseGistFile(files['gnapakalu_orders.json'])) || [];
+          const s = (await parseGistFile(files['gnapakalu_settings.json'])) || { pin: '1234' };
+          
           cloudData = {
-            products: p,
-            orders: o,
-            pin: s.pin || '1234'
+            products: Array.isArray(p) ? p : [],
+            orders: Array.isArray(o) ? o : [],
+            pin: (s && typeof s.pin === 'string' && s.pin.trim().length >= 4) ? s.pin.trim() : '1234'
           };
         }
       } catch (ge) {

@@ -38,27 +38,44 @@ module.exports = async function handler(req, res) {
       const gistData = await response.json();
       const files = gistData.files || {};
 
-      let products = [];
-      let orders = [];
-      let settings = { pin: '1234' };
-
-      if (files[FILE_PRODUCTS] && files[FILE_PRODUCTS].content) {
-        try { products = JSON.parse(files[FILE_PRODUCTS].content); } catch (e) {}
+      async function loadGistFileContent(fileObj) {
+        if (!fileObj) return null;
+        // If content is present and not truncated, parse directly
+        if (!fileObj.truncated && fileObj.content) {
+          try { return JSON.parse(fileObj.content); } catch (e) {}
+        }
+        // If truncated or content is missing/incomplete, fetch full raw content from raw_url
+        if (fileObj.raw_url) {
+          try {
+            const rawRes = await fetch(fileObj.raw_url, { cache: 'no-store' });
+            if (rawRes.ok) {
+              return await rawRes.json();
+            }
+          } catch (re) {
+            console.warn('Raw url fetch error for', fileObj.filename, re);
+          }
+        }
+        // Fallback parse attempt
+        if (fileObj.content) {
+          try { return JSON.parse(fileObj.content); } catch (e) {}
+        }
+        return null;
       }
 
-      if (files[FILE_ORDERS] && files[FILE_ORDERS].content) {
-        try { orders = JSON.parse(files[FILE_ORDERS].content); } catch (e) {}
-      }
+      const productsData = await loadGistFileContent(files[FILE_PRODUCTS]);
+      const ordersData = await loadGistFileContent(files[FILE_ORDERS]);
+      const settingsData = await loadGistFileContent(files[FILE_SETTINGS]);
 
-      if (files[FILE_SETTINGS] && files[FILE_SETTINGS].content) {
-        try { settings = JSON.parse(files[FILE_SETTINGS].content); } catch (e) {}
-      }
+      const products = Array.isArray(productsData) ? productsData : [];
+      const orders = Array.isArray(ordersData) ? ordersData : [];
+      const settings = (settingsData && typeof settingsData === 'object') ? settingsData : { pin: '1234' };
+      const currentPin = (settings && typeof settings.pin === 'string' && settings.pin.trim().length >= 4) ? settings.pin.trim() : '1234';
 
       return res.status(200).json({
         success: true,
-        products: Array.isArray(products) ? products : [],
-        orders: Array.isArray(orders) ? orders : [],
-        pin: settings.pin || '1234',
+        products: products,
+        orders: orders,
+        pin: currentPin,
         settings: settings
       });
     } catch (error) {
