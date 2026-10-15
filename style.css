@@ -808,61 +808,7 @@ a {
   color: var(--color-primary-dark);
 }
 
-/* Home Live Featured / New Arrivals Section */
-.home-featured-section {
-  margin: 3.5rem 0 2rem;
-  width: 100%;
-}
 
-.home-section-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.home-section-badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--color-accent-pink);
-  text-transform: uppercase;
-  margin-bottom: 0.25rem;
-}
-
-.home-section-title {
-  font-family: var(--font-serif);
-  font-size: 1.9rem;
-  font-weight: 700;
-  color: var(--color-text-main);
-  line-height: 1.2;
-  margin: 0;
-}
-
-.home-view-all-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  border: 1px solid var(--color-border);
-  padding: 0.55rem 1.15rem;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.home-view-all-btn:hover {
-  background: var(--gradient-luxe);
-  color: #ffffff;
-  border-color: transparent;
-  transform: translateY(-2px);
-}
 
 /* ===================================================================
    SCREEN 2: CATEGORIZED COLLECTION VIEW (CHANGES ON CLICK!)

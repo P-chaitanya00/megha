@@ -780,23 +780,7 @@ function createProductCardHtml(item) {
 // PRODUCTS GRID RENDERER
 // ===============================================================
 function renderProducts() {
-  // 1. Render Home Screen Featured / Latest Creations Grid
-  const homeGrid = document.getElementById('homeProductGrid');
-  const homeCountBadge = document.getElementById('homeFeaturedTotalCount');
-  if (homeCountBadge) homeCountBadge.textContent = PRODUCTS.length;
-  if (homeGrid) {
-    if (PRODUCTS.length === 0) {
-      homeGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
-          <p style="font-size: 1rem; color: var(--color-text-muted);">No products currently available.</p>
-        </div>
-      `;
-    } else {
-      homeGrid.innerHTML = PRODUCTS.map(createProductCardHtml).join('');
-    }
-  }
-
-  // 2. Render Catalog / Collection View Grid
+  // Render Catalog / Collection View Grid
   const container = document.getElementById('productGrid');
   const countText = document.getElementById('catalogCountText');
   if (!container) return;
