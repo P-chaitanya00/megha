@@ -144,7 +144,11 @@ try {
 }
 
 function saveProducts() {
-  localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+  try {
+    localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+  } catch (errQuota) {
+    console.warn('localStorage quota exceeded or blocked; maintaining in-memory and syncing to cloud:', errQuota);
+  }
   renderProducts();
   renderDrawerCategories();
   renderSubcategoryFilterChips();
@@ -232,7 +236,11 @@ async function syncStoreFromCloud(isUserInitiated = false) {
           }
         });
         PRODUCTS = cloudData.products;
-        localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+        try {
+          localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
+        } catch (errQuota) {
+          console.warn('localStorage quota reached when caching cloud products:', errQuota);
+        }
 
         renderProducts();
         renderDrawerCategories();
@@ -435,23 +443,36 @@ function formatINR(amount) {
 }
 
 // INITIALIZATION
-document.addEventListener('DOMContentLoaded', () => {
-  syncPinFromCloud();
-  syncProductsFromCloud(); // Real-time sync across devices on startup
+function initStore() {
+  renderProducts();
   renderDrawerCategories();
   updateCartUI();
   updateWishlistCount();
   updateMgmtLiveBadge();
   updateMgmtOrdersCount();
   setupEventListeners();
-});
+  syncStoreFromCloud();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initStore);
+} else {
+  initStore();
+}
 
 // Auto-sync when user returns to website or switches tabs
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    syncProductsFromCloud();
+    syncStoreFromCloud();
   }
 });
+
+// Periodic auto-sync every 30 seconds so devices always stay synchronized live
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    syncStoreFromCloud();
+  }
+}, 30000);
 
 // LISTENERS
 function setupEventListeners() {
@@ -658,10 +679,124 @@ function getStockDisplay(stockCount) {
   return { label: 'In Stock', cssClass: 'in-stock', isOutOfStock: false, isFewLeft: false };
 }
 
+// Helper to render individual product card HTML
+function createProductCardHtml(item) {
+  const isWishlisted = wishlist.includes(item.id);
+  const savings = item.originalPrice - item.offerPrice;
+  const discountPercent = Math.round((savings / item.originalPrice) * 100);
+  const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
+  const currentImg = activeVariant ? activeVariant.image : item.image;
+  const stockInfo = getStockDisplay(item.stock);
+
+  const variantSwatchesHtml = item.variants ? `
+    <div class="product-color-picker">
+      <span class="color-picker-label">Color:</span>
+      ${item.variants.map((v) => {
+        const isSelected = activeVariant && activeVariant.name === v.name;
+        return `
+          <button type="button" class="color-swatch-btn ${isSelected ? 'active' : ''}" 
+                  onclick="selectProductColor('${item.id}', '${v.name}')" 
+                  title="${v.name}">
+            <span class="color-circle" style="background-color: ${v.color};"></span>
+            <span>${v.name}</span>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
+  return `
+    <div class="product-card ${stockInfo.isOutOfStock ? 'sold-out' : ''}" id="card-${item.id}">
+      <div class="product-image-container">
+        <img src="${currentImg}" alt="${item.name}" id="img-${item.id}" class="product-img" loading="lazy" />
+        
+        <div class="card-badges">
+          ${stockInfo.isOutOfStock 
+            ? `<span class="badge-tag-out-of-stock">OUT OF STOCK</span>` 
+            : stockInfo.isFewLeft
+            ? `<span class="badge-tag-few-left">ONLY FEW LEFT</span>`
+            : `<span class="badge-tag-discount">${discountPercent}% OFF</span>`
+          }
+          <span class="badge-tag-feature">${item.badge || 'Handcrafted'}</span>
+        </div>
+
+        <button class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
+                onclick="toggleWishlist('${item.id}')" 
+                aria-label="Wishlist">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </button>
+
+        <div class="quick-view-overlay">
+          <button class="quick-view-btn" onclick="openQuickView('${item.id}')">Quick View</button>
+        </div>
+      </div>
+
+      <div class="product-content">
+        <div>
+          <div class="product-meta">
+            <span class="product-material">${item.category}</span>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <span class="gender-pill">${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
+              <span class="stock-indicator-live ${stockInfo.cssClass}">${stockInfo.label}</span>
+            </div>
+          </div>
+          
+          <h3 class="product-title">${item.name}</h3>
+          ${variantSwatchesHtml}
+        </div>
+
+        <div class="product-pricing-row">
+          <div class="price-box">
+            <span class="current-price">${formatINR(item.offerPrice)}</span>
+            <div class="price-strike-line">
+              <span class="original-price">${formatINR(item.originalPrice)}</span>
+              <span class="save-tag">Save ${formatINR(savings)}</span>
+            </div>
+          </div>
+          
+          ${stockInfo.isOutOfStock ? `
+            <button class="add-to-cart-btn out-of-stock" disabled title="Item Out of Stock">
+              <span>Out of Stock</span>
+            </button>
+          ` : `
+            <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              <span>Add</span>
+            </button>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ===============================================================
 // PRODUCTS GRID RENDERER
 // ===============================================================
 function renderProducts() {
+  // 1. Render Home Screen Featured / Latest Creations Grid
+  const homeGrid = document.getElementById('homeProductGrid');
+  const homeCountBadge = document.getElementById('homeFeaturedTotalCount');
+  if (homeCountBadge) homeCountBadge.textContent = PRODUCTS.length;
+  if (homeGrid) {
+    if (PRODUCTS.length === 0) {
+      homeGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem;">
+          <p style="font-size: 1rem; color: var(--color-text-muted);">No products currently available.</p>
+        </div>
+      `;
+    } else {
+      homeGrid.innerHTML = PRODUCTS.map(createProductCardHtml).join('');
+    }
+  }
+
+  // 2. Render Catalog / Collection View Grid
   const container = document.getElementById('productGrid');
   const countText = document.getElementById('catalogCountText');
   if (!container) return;
@@ -673,14 +808,14 @@ function renderProducts() {
   });
 
   if (activeCategoryFilter !== 'all') {
-    list = list.filter(item => item.category === activeCategoryFilter);
+    list = list.filter(item => item.category.toLowerCase() === activeCategoryFilter.toLowerCase());
   }
 
   if (searchQuery) {
     list = list.filter(item => 
       item.name.toLowerCase().includes(searchQuery) ||
       item.category.toLowerCase().includes(searchQuery) ||
-      item.description.toLowerCase().includes(searchQuery)
+      (item.description && item.description.toLowerCase().includes(searchQuery))
     );
   }
 
@@ -702,101 +837,7 @@ function renderProducts() {
     return;
   }
 
-  container.innerHTML = list.map(item => {
-    const isWishlisted = wishlist.includes(item.id);
-    const savings = item.originalPrice - item.offerPrice;
-    const discountPercent = Math.round((savings / item.originalPrice) * 100);
-    const activeVariant = item.variants ? (selectedProductVariants[item.id] || item.variants[0]) : null;
-    const currentImg = activeVariant ? activeVariant.image : item.image;
-    const stockInfo = getStockDisplay(item.stock);
-
-    const variantSwatchesHtml = item.variants ? `
-      <div class="product-color-picker">
-        <span class="color-picker-label">Color:</span>
-        ${item.variants.map((v, idx) => {
-          const isSelected = activeVariant && activeVariant.name === v.name;
-          return `
-            <button type="button" class="color-swatch-btn ${isSelected ? 'active' : ''}" 
-                    onclick="selectProductColor('${item.id}', '${v.name}')" 
-                    title="${v.name}">
-              <span class="color-circle" style="background-color: ${v.color};"></span>
-              <span>${v.name}</span>
-            </button>
-          `;
-        }).join('')}
-      </div>
-    ` : '';
-
-    return `
-      <div class="product-card ${stockInfo.isOutOfStock ? 'sold-out' : ''}" id="card-${item.id}">
-        <div class="product-image-container">
-          <img src="${currentImg}" alt="${item.name}" id="img-${item.id}" class="product-img" loading="lazy" />
-          
-          <div class="card-badges">
-            ${stockInfo.isOutOfStock 
-              ? `<span class="badge-tag-out-of-stock">OUT OF STOCK</span>` 
-              : stockInfo.isFewLeft
-              ? `<span class="badge-tag-few-left">ONLY FEW LEFT</span>`
-              : `<span class="badge-tag-discount">${discountPercent}% OFF</span>`
-            }
-            <span class="badge-tag-feature">${item.badge || 'Handcrafted'}</span>
-          </div>
-
-          <button class="wishlist-btn ${isWishlisted ? 'active' : ''}" 
-                  onclick="toggleWishlist('${item.id}')" 
-                  aria-label="Wishlist">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="${isWishlisted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-          </button>
-
-          <div class="quick-view-overlay">
-            <button class="quick-view-btn" onclick="openQuickView('${item.id}')">Quick View</button>
-          </div>
-        </div>
-
-        <div class="product-content">
-          <div>
-            <div class="product-meta">
-              <span class="product-material">${item.category}</span>
-              <div style="display: flex; gap: 0.35rem; align-items: center;">
-                <span class="gender-pill">${item.gender === 'both' ? 'Unisex' : item.gender === 'w' ? 'Women' : 'Men'}</span>
-                <span class="stock-indicator-live ${stockInfo.cssClass}">${stockInfo.label}</span>
-              </div>
-            </div>
-            
-            <h3 class="product-title">${item.name}</h3>
-            ${variantSwatchesHtml}
-          </div>
-
-          <div class="product-pricing-row">
-            <div class="price-box">
-              <span class="current-price">${formatINR(item.offerPrice)}</span>
-              <div class="price-strike-line">
-                <span class="original-price">${formatINR(item.originalPrice)}</span>
-                <span class="save-tag">Save ${formatINR(savings)}</span>
-              </div>
-            </div>
-            
-            ${stockInfo.isOutOfStock ? `
-              <button class="add-to-cart-btn out-of-stock" disabled title="Item Out of Stock">
-                <span>Out of Stock</span>
-              </button>
-            ` : `
-              <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <path d="M16 10a4 4 0 0 1-8 0"></path>
-                </svg>
-                <span>Add</span>
-              </button>
-            `}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  container.innerHTML = list.map(createProductCardHtml).join('');
 }
 
 // Color variant switch handler
