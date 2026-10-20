@@ -439,7 +439,7 @@ a {
 }
 
 /* ===================================================================
-   INTERACTIVE FOCUS SHOWCASE (VERTICAL STACKED, ACCORDION MINIMIZE)
+   FIXED ATELIER BANNERS (FIXED WIDTH & HEIGHT, NO ANIMATION JUMP)
    =================================================================== */
 .luxe-focus-showcase {
   display: flex;
@@ -451,35 +451,20 @@ a {
 .focus-collection-strip {
   position: relative;
   width: 100%;
-  height: 135px; /* Clean standard medium resting height */
-  border-radius: 22px;
+  height: 110px; /* Fixed height */
+  border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.95);
   box-shadow: 0 8px 24px var(--color-shadow);
   display: flex;
   align-items: center;
-  transition: height 0.5s cubic-bezier(0.2, 0.9, 0.3, 1),
-              opacity 0.45s ease,
-              transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1),
-              box-shadow 0.45s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
-/* Hovered strip becomes big in medium (230px) */
 .focus-collection-strip:hover {
-  height: 230px;
-  transform: translateY(-2px);
-  box-shadow: 0 20px 48px rgba(139, 92, 246, 0.28);
+  box-shadow: 0 10px 28px rgba(139, 92, 246, 0.25);
   border-color: var(--color-border-pink);
-  z-index: 2;
-}
-
-/* The other strip completely minimizes to 65px */
-.luxe-focus-showcase:hover .focus-collection-strip:not(:hover) {
-  height: 65px;
-  opacity: 0.65;
-  transform: scale(0.985);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .strip-media {
@@ -495,13 +480,7 @@ a {
   height: 100%;
   object-fit: cover;
   object-position: center 35%;
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
   filter: brightness(0.88);
-}
-
-.focus-collection-strip:hover .strip-img {
-  transform: scale(1.05);
-  filter: brightness(0.96);
 }
 
 .strip-scrim {
@@ -514,14 +493,13 @@ a {
     rgba(24, 10, 36, 0.3) 70%,
     rgba(24, 10, 36, 0.75) 100%
   );
-  transition: opacity 0.3s ease;
 }
 
 .strip-content {
   position: relative;
   z-index: 3;
   width: 100%;
-  padding: 1.5rem 2.25rem;
+  padding: 1.25rem 2.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -548,28 +526,16 @@ a {
   padding: 0.25rem 0.75rem;
   border-radius: var(--radius-full);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease;
 }
 
 .strip-title {
   font-family: var(--font-serif);
-  font-size: 1.7rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
   line-height: 1.2;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  transition: all 0.4s ease;
-}
-
-.focus-collection-strip:hover .strip-title {
-  font-size: 2.15rem;
-  color: #fae8ff;
-  letter-spacing: -0.01em;
-}
-
-.luxe-focus-showcase:hover .focus-collection-strip:not(:hover) .strip-title {
-  font-size: 1.15rem;
 }
 
 .strip-info-right {
@@ -585,11 +551,6 @@ a {
   letter-spacing: 0.02em;
   white-space: nowrap;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  transition: font-size 0.4s ease;
-}
-
-.focus-collection-strip:hover .strip-price {
-  font-size: 1.15rem;
 }
 
 .strip-btn {
@@ -604,12 +565,11 @@ a {
   border-radius: var(--radius-full);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   white-space: nowrap;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: opacity 0.2s ease;
 }
 
 .focus-collection-strip:hover .strip-btn {
-  transform: translateX(4px);
-  box-shadow: 0 6px 18px rgba(236, 72, 153, 0.45);
+  opacity: 0.95;
 }
 
 /* ===================================================================
@@ -2882,19 +2842,13 @@ a {
    =================================================================== */
 @media (max-width: 860px) {
   .focus-collection-strip {
-    height: 115px;
+    height: 105px;
   }
   .strip-content {
     padding: 1.25rem 1.5rem;
   }
   .strip-title {
     font-size: 1.35rem;
-  }
-  .focus-collection-strip:hover {
-    height: 145px;
-  }
-  .luxe-focus-showcase:hover .focus-collection-strip:not(:hover) {
-    height: 90px;
   }
 }
 
@@ -3028,17 +2982,17 @@ a {
     animation-duration: 22s;
   }
 
-  /* Dedicated Mobile Adjustments for Stacked Focus Strips */
+  /* Dedicated Mobile Adjustments for Fixed Focus Strips */
   .focus-collection-strip {
-    height: 110px;
+    height: 95px;
     border-radius: 16px;
   }
   .strip-content {
-    padding: 1rem 1.25rem;
+    padding: 0.9rem 1.15rem;
     gap: 0.75rem;
   }
   .strip-title {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
   }
   .strip-price {
     font-size: 0.85rem;
@@ -3046,17 +3000,6 @@ a {
   .strip-btn {
     padding: 0.4rem 0.9rem;
     font-size: 0.75rem;
-  }
-  .focus-collection-strip:hover,
-  .focus-collection-strip:active {
-    height: 155px;
-  }
-  .focus-collection-strip:hover .strip-title,
-  .focus-collection-strip:active .strip-title {
-    font-size: 1.5rem;
-  }
-  .luxe-focus-showcase:hover .focus-collection-strip:not(:hover) {
-    height: 80px;
   }
 }
 
