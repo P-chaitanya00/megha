@@ -7,8 +7,44 @@ const FILE_PRODUCTS = 'gnapakalu_products.json';
 const FILE_ORDERS = 'gnapakalu_orders.json';
 const FILE_SETTINGS = 'gnapakalu_settings.json';
 
+async function fetchGist() {
+  const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    headers: {
+      'Authorization': `token ${GITHUB_TOKEN}`,
+      'User-Agent': 'Gnapakalu-Store'
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`GitHub Gist API error: ${response.status}`);
+  }
+  return await response.json();
+}
+
+async function loadGistFileContent(fileObj) {
+  if (!fileObj) return null;
+  // If content is present and not truncated, parse directly
+  if (!fileObj.truncated && fileObj.content) {
+    try { return JSON.parse(fileObj.content); } catch (e) {}
+  }
+  // If truncated or content is missing/incomplete, fetch full raw content from raw_url
+  if (fileObj.raw_url) {
+    try {
+      const rawRes = await fetch(fileObj.raw_url, { cache: 'no-store' });
+      if (rawRes.ok) {
+        return await rawRes.json();
+      }
+    } catch (re) {
+      console.warn('Raw url fetch error for', fileObj.filename, re);
+    }
+  }
+  if (fileObj.content) {
+    try { return JSON.parse(fileObj.content); } catch (e) {}
+  }
+  return null;
+}
+
 module.exports = async function handler(req, res) {
-  // CORS Headers
+  // CORS & Strict Non-Caching Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -16,6 +52,9 @@ module.exports = async function handler(req, res) {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -24,43 +63,8 @@ module.exports = async function handler(req, res) {
   // GET: Retrieve latest Products, Orders, and Settings (PIN) from Cloud Gist
   if (req.method === 'GET') {
     try {
-      const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'User-Agent': 'Gnapakalu-Store'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`GitHub Gist API error: ${response.status}`);
-      }
-
-      const gistData = await response.json();
+      const gistData = await fetchGist();
       const files = gistData.files || {};
-
-      async function loadGistFileContent(fileObj) {
-        if (!fileObj) return null;
-        // If content is present and not truncated, parse directly
-        if (!fileObj.truncated && fileObj.content) {
-          try { return JSON.parse(fileObj.content); } catch (e) {}
-        }
-        // If truncated or content is missing/incomplete, fetch full raw content from raw_url
-        if (fileObj.raw_url) {
-          try {
-            const rawRes = await fetch(fileObj.raw_url, { cache: 'no-store' });
-            if (rawRes.ok) {
-              return await rawRes.json();
-            }
-          } catch (re) {
-            console.warn('Raw url fetch error for', fileObj.filename, re);
-          }
-        }
-        // Fallback parse attempt
-        if (fileObj.content) {
-          try { return JSON.parse(fileObj.content); } catch (e) {}
-        }
-        return null;
-      }
 
       const productsData = await loadGistFileContent(files[FILE_PRODUCTS]);
       const ordersData = await loadGistFileContent(files[FILE_ORDERS]);
@@ -93,29 +97,77 @@ module.exports = async function handler(req, res) {
       const body = req.body || {};
       const filesToPatch = {};
 
-      // 1. Products update
-      if (Array.isArray(body)) {
+      // 1. FAST SINGLE-PRODUCT OPERATIONS (Tiny payload, instant 0.5s execution)
+      if (body.action === 'add_product' && body.product) {
+        const gistData = await fetchGist();
+        const existingProducts = (await loadGistFileContent(gistData.files && gistData.files[FILE_PRODUCTS])) || [];
+        const idx = existingProducts.findIndex(p => p.id === body.product.id);
+        if (idx !== -1) {
+          existingProducts[idx] = body.product;
+        } else {
+          existingProducts.unshift(body.product);
+        }
         filesToPatch[FILE_PRODUCTS] = {
-          content: JSON.stringify(body, null, 2)
+          content: JSON.stringify(existingProducts)
+        };
+      } else if (body.action === 'update_product' && body.product) {
+        const gistData = await fetchGist();
+        const existingProducts = (await loadGistFileContent(gistData.files && gistData.files[FILE_PRODUCTS])) || [];
+        const idx = existingProducts.findIndex(p => p.id === body.product.id);
+        if (idx !== -1) {
+          existingProducts[idx] = body.product;
+        } else {
+          existingProducts.unshift(body.product);
+        }
+        filesToPatch[FILE_PRODUCTS] = {
+          content: JSON.stringify(existingProducts)
+        };
+      } else if (body.action === 'delete_product' && body.productId) {
+        const gistData = await fetchGist();
+        let existingProducts = (await loadGistFileContent(gistData.files && gistData.files[FILE_PRODUCTS])) || [];
+        existingProducts = existingProducts.filter(p => p.id !== body.productId);
+        filesToPatch[FILE_PRODUCTS] = {
+          content: JSON.stringify(existingProducts)
+        };
+      } else if (body.action === 'adjust_stock' && body.productId) {
+        const gistData = await fetchGist();
+        const existingProducts = (await loadGistFileContent(gistData.files && gistData.files[FILE_PRODUCTS])) || [];
+        const item = existingProducts.find(p => p.id === body.productId);
+        if (item) {
+          if (typeof body.stock === 'number') {
+            item.stock = Math.max(0, body.stock);
+          } else if (typeof body.delta === 'number') {
+            const currentStock = typeof item.stock === 'number' ? item.stock : 10;
+            item.stock = Math.max(0, currentStock + body.delta);
+          }
+          filesToPatch[FILE_PRODUCTS] = {
+            content: JSON.stringify(existingProducts)
+          };
+        }
+      }
+      // 2. FULL PRODUCTS ARRAY UPDATE (Fallback)
+      else if (Array.isArray(body)) {
+        filesToPatch[FILE_PRODUCTS] = {
+          content: JSON.stringify(body)
         };
       } else if (Array.isArray(body.products)) {
         filesToPatch[FILE_PRODUCTS] = {
-          content: JSON.stringify(body.products, null, 2)
+          content: JSON.stringify(body.products)
         };
       }
 
-      // 2. Orders update
+      // 3. ORDERS UPDATE
       if (Array.isArray(body.orders)) {
         filesToPatch[FILE_ORDERS] = {
-          content: JSON.stringify(body.orders, null, 2)
+          content: JSON.stringify(body.orders)
         };
       }
 
-      // 3. Settings / PIN update
+      // 4. SETTINGS / PIN UPDATE
       if (body.pin || body.settings) {
         const pinVal = String(body.pin || (body.settings && body.settings.pin) || '1234').trim();
         filesToPatch[FILE_SETTINGS] = {
-          content: JSON.stringify({ pin: pinVal, updatedAt: new Date().toISOString() }, null, 2)
+          content: JSON.stringify({ pin: pinVal, updatedAt: new Date().toISOString() })
         };
       }
 

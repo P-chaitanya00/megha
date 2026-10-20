@@ -143,16 +143,23 @@ try {
   PRODUCTS = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
 }
 
-function saveProducts() {
+function saveProductsLocalOnly() {
   try {
     localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
   } catch (errQuota) {
-    console.warn('localStorage quota exceeded or blocked; maintaining in-memory and syncing to cloud:', errQuota);
+    console.warn('localStorage quota exceeded or blocked; maintaining in-memory:', errQuota);
   }
   renderProducts();
   renderDrawerCategories();
   renderSubcategoryFilterChips();
   updateMgmtLiveBadge();
+  if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
+    renderMgmtProductsTable();
+  }
+}
+
+function saveProducts() {
+  saveProductsLocalOnly();
   syncProductsToCloud(PRODUCTS);
 }
 
@@ -226,16 +233,44 @@ async function syncStoreFromCloud(isUserInitiated = false) {
       }
     }
 
+    // 3. Fallback to static products.json if cloud sync returned nothing and PRODUCTS is small
+    if (!cloudData && (!PRODUCTS || PRODUCTS.length <= 6)) {
+      try {
+        const staticRes = await fetch('products.json?v=' + Date.now());
+        if (staticRes.ok) {
+          const staticProds = await staticRes.json();
+          if (Array.isArray(staticProds) && staticProds.length > 0) {
+            cloudData = { products: staticProds, orders: [], pin: '7890' };
+          }
+        }
+      } catch (se) {}
+    }
+
     if (cloudData) {
       // --- A. SYNC PRODUCTS & INVENTORY ---
       if (Array.isArray(cloudData.products) && cloudData.products.length > 0) {
+        const prodMap = new Map();
         cloudData.products.forEach(p => {
-          if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
-          if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
-            ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+          if (p && p.id) {
+            if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
+            if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
+              ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+            }
+            prodMap.set(p.id, p);
           }
         });
-        PRODUCTS = cloudData.products;
+
+        // Retain any locally added products that haven't reached cloud yet
+        if (Array.isArray(PRODUCTS)) {
+          PRODUCTS.forEach(p => {
+            if (p && p.id && !prodMap.has(p.id)) {
+              prodMap.set(p.id, p);
+            }
+          });
+        }
+
+        const mergedProducts = Array.from(prodMap.values());
+        PRODUCTS = mergedProducts;
         try {
           localStorage.setItem('gnapakalu_products', JSON.stringify(PRODUCTS));
         } catch (errQuota) {
@@ -248,6 +283,12 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         updateMgmtLiveBadge();
         if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
           renderMgmtProductsTable();
+        }
+
+        // If local products had items not yet in cloud, push merged list
+        if (mergedProducts.length > cloudData.products.length) {
+          console.log(`Pushing ${mergedProducts.length - cloudData.products.length} local un-synced products to cloud...`);
+          syncProductsToCloud(mergedProducts);
         }
       }
 
@@ -315,6 +356,61 @@ async function syncProductsFromCloud(isUserInitiated = false) {
   return syncStoreFromCloud(isUserInitiated);
 }
 
+// Single-product instant cloud sync (ultra-lightweight, 0.2s)
+async function syncSingleProductToCloud(product, action = 'add_product') {
+  try {
+    const badge = document.getElementById('mgmtSyncStatusBadge');
+    if (badge) badge.textContent = '☁️ Publishing live to cloud...';
+
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, product: product })
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success) {
+        if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
+        console.log(`✅ Product ${action} synced to cloud successfully.`);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn(`Single product ${action} failed:`, err);
+  }
+  return false;
+}
+
+// Single-product deletion cloud sync
+async function syncDeleteProductToCloud(productId) {
+  try {
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_product', productId: productId })
+    });
+    if (res.ok) {
+      console.log('✅ Product deletion synced to cloud.');
+      return true;
+    }
+  } catch (err) {
+    console.warn('Delete product cloud sync failed:', err);
+  }
+  return false;
+}
+
+// Stock change cloud sync
+async function syncStockToCloud(productId, stock) {
+  try {
+    await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'adjust_stock', productId: productId, stock: stock })
+    });
+  } catch (e) {}
+}
+
 async function syncProductsToCloud(productsList) {
   try {
     const badge = document.getElementById('mgmtSyncStatusBadge');
@@ -329,10 +425,12 @@ async function syncProductsToCloud(productsList) {
     if (res.ok) {
       if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
       console.log('✅ Products synced to cloud successfully.');
+      return true;
     }
   } catch (err) {
     console.error('Failed to sync products to cloud:', err);
   }
+  return false;
 }
 
 async function syncOrdersToCloud(ordersList) {
@@ -443,7 +541,7 @@ function formatINR(amount) {
 }
 
 // INITIALIZATION
-function initStore() {
+async function initStore() {
   renderProducts();
   renderDrawerCategories();
   updateCartUI();
@@ -451,6 +549,23 @@ function initStore() {
   updateMgmtLiveBadge();
   updateMgmtOrdersCount();
   setupEventListeners();
+
+  // If local products are missing or have only default dummy items, load static products.json immediately
+  if (!PRODUCTS || PRODUCTS.length <= 6) {
+    try {
+      const pRes = await fetch('products.json?v=' + Date.now());
+      if (pRes.ok) {
+        const staticList = await pRes.json();
+        if (Array.isArray(staticList) && staticList.length > 0) {
+          PRODUCTS = staticList;
+          saveProductsLocalOnly();
+        }
+      }
+    } catch (errStatic) {
+      console.warn('products.json pre-load notice:', errStatic);
+    }
+  }
+
   syncStoreFromCloud();
 }
 
@@ -467,12 +582,12 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Periodic auto-sync every 30 seconds so devices always stay synchronized live
+// Periodic auto-sync every 15 seconds so devices always stay synchronized live in real-time
 setInterval(() => {
   if (document.visibilityState === 'visible') {
     syncStoreFromCloud();
   }
-}, 30000);
+}, 15000);
 
 // LISTENERS
 function setupEventListeners() {
@@ -599,6 +714,7 @@ function openCollectionScreen(gender, title = 'Curated Collection') {
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  syncStoreFromCloud();
 }
 
 // 3. NAVIGATE DIRECTLY TO A SPECIFIC CATEGORY SCREEN
@@ -629,6 +745,7 @@ function openCategoryScreen(categoryName, customTitle) {
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  syncStoreFromCloud();
 }
 
 // ===============================================================
@@ -2519,7 +2636,7 @@ function autoCalculateOriginalPrice(val) {
 }
 
 // Compress image file to standard dimensions for ultra-fast loading across mobile and cloud
-function compressImageFile(file, maxWidth = 700, maxHeight = 700, quality = 0.75) {
+function compressImageFile(file, maxWidth = 600, maxHeight = 600, quality = 0.70) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -2615,7 +2732,7 @@ function showMgmtImagePreview(src) {
   }
 }
 
-function handleMgmtFormSubmit(e) {
+async function handleMgmtFormSubmit(e) {
   e.preventDefault();
 
   const editId = document.getElementById('mgmtEditProductId').value;
@@ -2652,6 +2769,16 @@ function handleMgmtFormSubmit(e) {
     return;
   }
 
+  const submitBtn = document.getElementById('mgmtSubmitBtn');
+  const originalBtnContent = submitBtn ? submitBtn.innerHTML : '<span>💾 Save & Publish to Live Website</span>';
+  if (submitBtn) {
+    submitBtn.innerHTML = '<span>⏳ Publishing to Live Website...</span>';
+    submitBtn.disabled = true;
+  }
+
+  let productObj = null;
+  const syncAction = editId ? 'update_product' : 'add_product';
+
   if (editId) {
     // EDIT EXISTING LIVE PRODUCT
     const existing = PRODUCTS.find(p => p.id === editId);
@@ -2665,11 +2792,11 @@ function handleMgmtFormSubmit(e) {
       existing.badge = badge;
       if (mgmtUploadedImageDataUrl) existing.image = image;
       existing.description = desc;
-      showToast(`Product "${name}" updated successfully!`);
+      productObj = Object.assign({}, existing);
     }
   } else {
     // ADD NEW PRODUCT
-    const newProduct = {
+    productObj = {
       id: 'prod_' + Date.now(),
       name,
       category,
@@ -2682,13 +2809,40 @@ function handleMgmtFormSubmit(e) {
       description: desc,
       tags: [category, gender === 'w' ? 'Women' : gender === 'm' ? 'Men' : 'Unisex']
     };
-    PRODUCTS.unshift(newProduct);
-    showToast(`Product "${name}" published to live website!`);
+    PRODUCTS.unshift(productObj);
+  }
+
+  // 1. Save locally and render immediately on current device
+  saveProductsLocalOnly();
+
+  // 2. Publish to cloud live (with single action for fast <1s sync)
+  let cloudSuccess = false;
+  if (productObj) {
+    cloudSuccess = await syncSingleProductToCloud(productObj, syncAction);
+  }
+
+  // Fallback: Full push if single product action was not acknowledged
+  if (!cloudSuccess) {
+    console.log('Single product sync fallback to full store push...');
+    cloudSuccess = await syncProductsToCloud(PRODUCTS);
+  }
+
+  if (submitBtn) {
+    submitBtn.innerHTML = originalBtnContent;
+    submitBtn.disabled = false;
   }
 
   cancelProductEditing();
-  saveProducts();
   switchMgmtTab('list');
+
+  if (cloudSuccess) {
+    showToast(`🟢 Product "${name}" is now LIVE across all devices!`);
+    const badge = document.getElementById('mgmtSyncStatusBadge');
+    if (badge) badge.textContent = '🟢 LIVE CLOUD SYNCED';
+  } else {
+    showToast(`⚠️ Saved locally. Cloud sync will retry in background.`);
+    setTimeout(() => syncProductsToCloud(PRODUCTS), 3000);
+  }
 }
 
 function cancelProductEditing() {
@@ -2748,8 +2902,9 @@ function deleteProductInPortal(productId) {
   if (!confirm(`Are you sure you want to permanently remove "${p.name}" from the live store?`)) return;
 
   PRODUCTS = PRODUCTS.filter(item => item.id !== productId);
-  saveProducts();
+  saveProductsLocalOnly();
   renderMgmtProductsTable();
+  syncDeleteProductToCloud(productId);
   showToast(`Product "${p.name}" removed from store`);
 }
 
@@ -2758,8 +2913,9 @@ function adjustStockInline(productId, delta) {
   if (!p) return;
   const curr = (typeof p.stock === 'number') ? p.stock : 10;
   p.stock = Math.max(0, curr + delta);
-  saveProducts();
+  saveProductsLocalOnly();
   renderMgmtProductsTable();
+  syncStockToCloud(productId, p.stock);
   showToast(`Stock for "${p.name}" updated to ${p.stock}!`);
 }
 
@@ -2767,8 +2923,9 @@ function setStockInline(productId, val) {
   const p = PRODUCTS.find(item => item.id === productId);
   if (!p) return;
   p.stock = Math.max(0, parseInt(val, 10) || 0);
-  saveProducts();
+  saveProductsLocalOnly();
   renderMgmtProductsTable();
+  syncStockToCloud(productId, p.stock);
   showToast(`Stock for "${p.name}" set to ${p.stock}!`);
 }
 
