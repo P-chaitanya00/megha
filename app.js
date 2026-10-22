@@ -1842,7 +1842,11 @@ async function dispatchOrderEmail(order) {
       const data = await res.json();
       if (data.success) {
         console.log('Order notification successfully dispatched to', targetEmail);
-        return true;
+        return { success: true };
+      }
+      if (data.needsActivation) {
+        console.warn('FormSubmit needs activation on', targetEmail);
+        return { success: false, needsActivation: true, message: data.message };
       }
     }
   } catch (err) {
@@ -1862,7 +1866,7 @@ async function dispatchOrderEmail(order) {
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted}`,
+        _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + (order.grandTotal || 0)}`,
         _template: 'table',
         _captcha: 'false',
         Store: 'Gnapakalu by Megha',
@@ -1880,18 +1884,20 @@ async function dispatchOrderEmail(order) {
         State: order.state,
         Pincode: order.pincode,
         Ordered_Items: itemsList,
-        Bag_Subtotal: order.subtotalFormatted,
-        Promotional_Discount: order.discountFormatted,
-        Courier_Zone_and_Charge: `${order.shippingZone} (${order.courierChargeFormatted})`,
-        TOTAL_AMOUNT_PAID: order.grandTotalFormatted
+        Bag_Subtotal: order.subtotalFormatted || '₹' + (order.subtotal || 0),
+        Promotional_Discount: order.discountFormatted || '₹' + (order.discount || 0),
+        Courier_Zone_and_Charge: `${order.shippingZone} (${order.courierChargeFormatted || '₹' + (order.courierCharge || 0)})`,
+        TOTAL_AMOUNT_PAID: order.grandTotalFormatted || '₹' + (order.grandTotal || 0)
       })
     });
     const resJson = await fallbackRes.json();
+    const isSuccess = resJson && (resJson.success === 'true' || resJson.success === true);
+    const needsActivation = resJson && typeof resJson.message === 'string' && resJson.message.includes('Activation');
     console.log('Order email dispatched to', targetEmail, resJson);
-    return true;
+    return { success: isSuccess, needsActivation: needsActivation, message: resJson.message };
   } catch (e) {
     console.error('Email dispatch error:', e);
-    return false;
+    return { success: false, error: e.message };
   }
 }
 
@@ -2602,8 +2608,81 @@ async function resendOrderEmail(orderId) {
     return;
   }
   showToast(`Sending email alert for ${orderId} to Sridevigummadi37@gmail.com...`);
-  await dispatchOrderEmail(order);
-  showToast(`Email dispatched to Sridevigummadi37@gmail.com! ✓`);
+  const result = await dispatchOrderEmail(order);
+  if (result && result.success) {
+    showToast(`🟢 Email dispatched to Sridevigummadi37@gmail.com! ✓`);
+  } else if (result && result.needsActivation) {
+    alert(
+      `⚠️ ACTION REQUIRED TO RECEIVE EMAILS:\n\n` +
+      `FormSubmit sent an activation email to Sridevigummadi37@gmail.com.\n\n` +
+      `1. Open Gmail for Sridevigummadi37@gmail.com\n` +
+      `2. Check your Inbox (and SPAM / Promotions folder) for an email from FormSubmit.\n` +
+      `3. Click the "Activate Form" button inside that email.\n\n` +
+      `Once you click Activate, all customer order emails and UTR numbers will automatically arrive in your Gmail!`
+    );
+  } else {
+    showToast(`⚠️ Please check your internet connection or email activation.`);
+  }
+}
+
+async function triggerEmailActivationTest() {
+  const btn = document.getElementById('mgmtTestEmailBtn');
+  const originalText = btn ? btn.innerHTML : '⚡ Verify / Test Email Delivery';
+  if (btn) {
+    btn.innerHTML = '⏳ Testing connection...';
+    btn.disabled = true;
+  }
+
+  const testOrder = {
+    orderId: '#TEST-' + Math.floor(100000 + Math.random() * 900000),
+    orderDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    customerName: 'Megha (Test Check)',
+    customerPhone: '9392430460',
+    houseNo: 'Store HQ',
+    address: 'Gnapakalu by Megha Studio',
+    landmark: 'Central',
+    state: 'Andhra Pradesh',
+    pincode: '530001',
+    items: [
+      { name: 'Connection Test Item', selectedVariant: 'Standard', qty: 1, price: 1, total: 1 }
+    ],
+    subtotal: 1,
+    subtotalFormatted: '₹1',
+    discount: 0,
+    discountFormatted: '₹0',
+    shippingZone: 'AP',
+    courierCharge: 0,
+    courierChargeFormatted: '₹0',
+    grandTotal: 1,
+    grandTotalFormatted: '₹1',
+    paymentApp: 'PhonePe',
+    utrNumber: 'TEST12345678',
+    transactionId: 'TXNTEST123',
+    paymentStatus: 'Payment Verified (Test)'
+  };
+
+  const res = await dispatchOrderEmail(testOrder);
+
+  if (btn) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+
+  if (res && res.success) {
+    alert('🟢 SUCCESS!\n\nEmail server is 100% ACTIVE and working!\nA test order email was just delivered to Sridevigummadi37@gmail.com.\n\nCheck your Gmail inbox now!');
+  } else if (res && res.needsActivation) {
+    alert(
+      '⚠️ ACTION REQUIRED ON GMAIL:\n\n' +
+      'FormSubmit has sent a confirmation email to Sridevigummadi37@gmail.com with subject "Activate Form".\n\n' +
+      'Steps to activate:\n' +
+      '1. Open Gmail for Sridevigummadi37@gmail.com\n' +
+      '2. Check Inbox, SPAM, or Promotions tab for "FormSubmit"\n' +
+      '3. Open the email and click the green "Activate Form" button.\n\n' +
+      'Once activated, all future orders will arrive in your Gmail automatically!'
+    );
+  } else {
+    alert('Notice: FormSubmit activation email sent to Sridevigummadi37@gmail.com. Please open Gmail (check Spam) and click Activate.');
+  }
 }
 
 function populateMgmtCategories() {

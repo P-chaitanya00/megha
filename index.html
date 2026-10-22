@@ -1071,11 +1071,16 @@
 
       <!-- TAB 3: LIVE CUSTOMER ORDERS MANAGER -->
       <div class="mgmt-tab-content" id="mgmtTabContentOrders" style="display: none;">
-        <div class="mgmt-inventory-controls">
-          <input type="text" id="mgmtOrderSearchInput" class="mgmt-input" placeholder="Search orders by customer name, phone, order ID..." oninput="renderMgmtOrdersTable()">
-          <div style="font-size: 0.82rem; color: var(--color-primary-dark); font-weight: 700; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
-            <span>📬 Auto-Email Server:</span>
-            <span style="background: #fdf2f8; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); border: 1px solid #fbcfe8; color: #be185d;">Sridevigummadi37@gmail.com</span>
+        <div class="mgmt-inventory-controls" style="flex-wrap: wrap; gap: 0.75rem;">
+          <input type="text" id="mgmtOrderSearchInput" class="mgmt-input" placeholder="Search orders by customer name, phone, order ID..." oninput="renderMgmtOrdersTable()" style="flex: 1; min-width: 200px;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <div style="font-size: 0.82rem; color: var(--color-primary-dark); font-weight: 700; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
+              <span>📬 Auto-Email Server:</span>
+              <span style="background: #fdf2f8; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); border: 1px solid #fbcfe8; color: #be185d;">Sridevigummadi37@gmail.com</span>
+            </div>
+            <button type="button" id="mgmtTestEmailBtn" onclick="triggerEmailActivationTest()" style="background: var(--gradient-luxe); color: #ffffff; border: none; padding: 0.4rem 0.9rem; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 8px rgba(225,29,72,0.25);">
+              <span>⚡ Verify / Send Test Email</span>
+            </button>
           </div>
         </div>
 

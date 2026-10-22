@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
 
     // Prepare email payload for FormSubmit
     const emailPayload = {
-      _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + order.grandTotal}`,
+      _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + (order.grandTotal || 0)}`,
       _template: 'table',
       _captcha: 'false',
       Store: storeName,
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
       Payment_App_Used: order.paymentApp || 'UPI App',
       Payment_UTR_Number: order.utrNumber || 'N/A',
       Transaction_ID: order.transactionId || 'N/A',
-      Payment_Status: 'Payment Completed / Order Placed',
+      Payment_Status: order.paymentStatus || 'Payment Completed / Order Placed',
       Customer_Name: order.customerName,
       Mobile_Number: order.customerPhone,
       House_Flat_Number: order.houseNo,
@@ -66,16 +66,20 @@ module.exports = async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': 'https://megha-rho.vercel.app/',
-        'Referer': 'https://megha-rho.vercel.app/'
+        'Origin': 'https://gnapakalubymegha.in',
+        'Referer': 'https://gnapakalubymegha.in/'
       },
       body: JSON.stringify(emailPayload)
     });
 
     const formSubmitData = await formSubmitResponse.json();
+    const isSuccess = formSubmitData && (formSubmitData.success === 'true' || formSubmitData.success === true);
+    const needsActivation = formSubmitData && typeof formSubmitData.message === 'string' && formSubmitData.message.includes('Activation');
 
     return res.status(200).json({
-      success: true,
+      success: isSuccess,
+      needsActivation: needsActivation,
+      message: formSubmitData.message || (isSuccess ? 'Order email dispatched successfully' : 'Failed to send email'),
       orderId: order.orderId,
       recipient: targetEmail,
       providerResponse: formSubmitData
