@@ -65,6 +65,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
+  <!-- Immediate pre-render purge of legacy orders from before today -->
+  <script>
+    try {
+      var _raw = localStorage.getItem('gnapakalu_customer_orders');
+      if (_raw) {
+        var _list = JSON.parse(_raw);
+        if (Array.isArray(_list)) {
+          var _clean = _list.filter(function(o) {
+            if (!o) return false;
+            var d = String(o.orderDate || '').toLowerCase();
+            return !d.includes('11 oct 2026') && !d.includes('11/10/2026') && !d.includes('12 oct 2026');
+          });
+          localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(_clean));
+        }
+      }
+    } catch(e) {}
+  </script>
 </head>
 <body>
 
@@ -1127,6 +1144,6 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript Engine -->
-  <script src="app.js"></script>
+  <script src="app.js?v=20261022_final_purged"></script>
 </body>
 </html>

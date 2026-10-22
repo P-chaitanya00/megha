@@ -1,3 +1,21 @@
+// IMMEDIATE BOOTSTRAP: Purge any legacy pre-today orders from browser localStorage
+(function purgeLegacyPreTodayOrdersImmediate() {
+  try {
+    const raw = localStorage.getItem('gnapakalu_customer_orders');
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const cleaned = list.filter(o => {
+          if (!o) return false;
+          const dStr = String(o.orderDate || '').toLowerCase();
+          return !dStr.includes('11 oct 2026') && !dStr.includes('11/10/2026') && !dStr.includes('12 oct 2026');
+        });
+        localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(cleaned));
+      }
+    }
+  } catch (e) {}
+})();
+
 /**
  * GNAPAKALU BY MEGHA - DYNAMIC SCREEN SWITCHER ENGINE
  * Screen 1: Clean Home Landing (Exact 2nd picture)
@@ -2561,6 +2579,9 @@ function switchMgmtTab(tab) {
 
 async function refreshLiveOrdersFromCloud() {
   showToast('🔄 Fetching latest customer orders & UTRs from cloud...');
+  try {
+    localStorage.removeItem('gnapakalu_customer_orders');
+  } catch (e) {}
   await syncStoreFromCloud(true);
   renderMgmtOrdersTable();
   let count = 0;
@@ -2573,6 +2594,11 @@ function updateMgmtOrdersCount() {
   try {
     allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
   } catch (e) {}
+  allOrders = allOrders.filter(o => {
+    if (!o) return false;
+    const dStr = String(o.orderDate || '').toLowerCase();
+    return !dStr.includes('11 oct 2026') && !dStr.includes('11/10/2026') && !dStr.includes('12 oct 2026');
+  });
   const badge = document.getElementById('mgmtOrdersCountBadge');
   if (badge) badge.textContent = allOrders.length;
 }
@@ -2584,6 +2610,15 @@ function renderMgmtOrdersTable() {
   let allOrders = [];
   try {
     allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+  } catch (e) {}
+  // Strictly filter out any legacy pre-today orders
+  allOrders = allOrders.filter(o => {
+    if (!o) return false;
+    const dStr = String(o.orderDate || '').toLowerCase();
+    return !dStr.includes('11 oct 2026') && !dStr.includes('11/10/2026') && !dStr.includes('12 oct 2026');
+  });
+  try {
+    localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
   } catch (e) {}
 
   updateMgmtOrdersCount();

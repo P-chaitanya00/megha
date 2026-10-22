@@ -94,7 +94,12 @@ module.exports = async function handler(req, res) {
         const ordFile = gData.files && gData.files['gnapakalu_orders.json'];
         if (ordFile && ordFile.content) {
           let list = [];
-          try { list = JSON.parse(ordFile.content); } catch (e) {}
+          try {
+            list = JSON.parse(ordFile.content).filter(o => {
+              const d = String(o && o.orderDate || '').toLowerCase();
+              return !d.includes('11 oct 2026') && !d.includes('11/10/2026');
+            });
+          } catch (e) {}
           if (!list.some(o => o.orderId === order.orderId)) {
             list.unshift(order);
             await fetch('https://api.github.com/gists/76c5b055af394e1a6b4e7f6b75f34ed4', {

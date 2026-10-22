@@ -43,6 +43,21 @@ async function loadGistFileContent(fileObj) {
   return null;
 }
 
+function isLegacyPreTodayOrder(order) {
+  if (!order) return true;
+  const dStr = String(order.orderDate || '').toLowerCase();
+  if (dStr.includes('11 oct 2026') || dStr.includes('11/10/2026') || dStr.includes('12 oct 2026')) {
+    return true;
+  }
+  try {
+    const parsed = new Date(String(order.orderDate).replace(' at ', ' ')).getTime();
+    if (parsed && !isNaN(parsed) && parsed < new Date('2026-10-22T00:00:00+05:30').getTime()) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 module.exports = async function handler(req, res) {
   // CORS & Strict Non-Caching Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -71,9 +86,27 @@ module.exports = async function handler(req, res) {
       const settingsData = await loadGistFileContent(files[FILE_SETTINGS]);
 
       const products = Array.isArray(productsData) ? productsData : [];
-      const orders = Array.isArray(ordersData) ? ordersData : [];
+      const rawOrders = Array.isArray(ordersData) ? ordersData : [];
+      const orders = rawOrders.filter(o => !isLegacyPreTodayOrder(o));
       const settings = (settingsData && typeof settingsData === 'object') ? settingsData : { pin: '1234' };
       const currentPin = (settings && typeof settings.pin === 'string' && settings.pin.trim().length >= 4) ? settings.pin.trim() : '1234';
+
+      // Auto-sanitize cloud Gist in background if legacy orders are detected
+      if (orders.length !== rawOrders.length) {
+        fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Gnapakalu-Store'
+          },
+          body: JSON.stringify({
+            files: {
+              [FILE_ORDERS]: { content: JSON.stringify(orders, null, 2) }
+            }
+          })
+        }).catch(err => console.warn('Background legacy prune error:', err));
+      }
 
       return res.status(200).json({
         success: true,
@@ -158,25 +191,33 @@ module.exports = async function handler(req, res) {
 
       // 3. FAST SINGLE-ORDER OPERATION (Customer submits order + UTR)
       if (body.action === 'add_order' && body.order) {
-        const gistData = await fetchGist();
-        const existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
-        const idx = existingOrders.findIndex(o => o.orderId === body.order.orderId);
-        if (idx !== -1) {
-          existingOrders[idx] = body.order;
-        } else {
-          existingOrders.unshift(body.order);
+        if (!isLegacyPreTodayOrder(body.order)) {
+          const gistData = await fetchGist();
+          let existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
+          existingOrders = existingOrders.filter(o => !isLegacyPreTodayOrder(o));
+          const idx = existingOrders.findIndex(o => o.orderId === body.order.orderId);
+          if (idx !== -1) {
+            existingOrders[idx] = body.order;
+          } else {
+            existingOrders.unshift(body.order);
+          }
+          filesToPatch[FILE_ORDERS] = {
+            content: JSON.stringify(existingOrders, null, 2)
+          };
         }
-        filesToPatch[FILE_ORDERS] = {
-          content: JSON.stringify(existingOrders)
-        };
       }
-      // MERGED FULL ORDERS ARRAY UPDATE (Fail-safe, never overwrites blindly)
+      // MERGED FULL ORDERS ARRAY UPDATE (Fail-safe, strictly excludes legacy pre-today orders)
       else if (Array.isArray(body.orders)) {
         const gistData = await fetchGist();
-        const existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
+        let existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
+        existingOrders = existingOrders.filter(o => !isLegacyPreTodayOrder(o));
         const orderMap = new Map();
         existingOrders.forEach(o => { if (o && o.orderId) orderMap.set(o.orderId, o); });
-        body.orders.forEach(o => { if (o && o.orderId) orderMap.set(o.orderId, o); });
+        body.orders.forEach(o => {
+          if (o && o.orderId && !isLegacyPreTodayOrder(o)) {
+            orderMap.set(o.orderId, o);
+          }
+        });
         const mergedList = Array.from(orderMap.values());
         mergedList.sort((a, b) => {
           const tA = new Date(a.orderDate).getTime() || 0;
@@ -184,7 +225,7 @@ module.exports = async function handler(req, res) {
           return tB - tA;
         });
         filesToPatch[FILE_ORDERS] = {
-          content: JSON.stringify(mergedList)
+          content: JSON.stringify(mergedList, null, 2)
         };
       }
 
