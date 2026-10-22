@@ -1081,6 +1081,9 @@
             <button type="button" id="mgmtRefreshOrdersBtn" onclick="refreshLiveOrdersFromCloud()" style="background: var(--color-primary-soft); color: var(--color-primary-dark); border: 1.5px solid var(--color-border); padding: 0.4rem 0.9rem; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
               <span>🔄 Refresh Orders</span>
             </button>
+            <button type="button" id="mgmtDispatchAllOrdersBtn" onclick="dispatchAllOrdersToEmail()" style="background: #059669; color: #ffffff; border: none; padding: 0.4rem 0.9rem; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 8px rgba(5,150,105,0.25);">
+              <span>📬 Email All Orders to Inbox</span>
+            </button>
             <button type="button" id="mgmtTestEmailBtn" onclick="triggerEmailActivationTest()" style="background: var(--gradient-luxe); color: #ffffff; border: none; padding: 0.4rem 0.9rem; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 8px rgba(225,29,72,0.25);">
               <span>⚡ Verify / Send Test Email</span>
             </button>

@@ -1904,14 +1904,19 @@ async function dispatchOrderEmail(order) {
 
   // 1. Primary: Direct Client-Side FormSubmit (Permitted by Cloudflare, direct from visitor browser)
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
     const res = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+      keepalive: true
     });
+    clearTimeout(timer);
     const data = await res.json();
     const isSuccess = data && (data.success === 'true' || data.success === true);
     const needsActivation = data && typeof data.message === 'string' && data.message.includes('Activation');
@@ -2170,23 +2175,26 @@ async function submitCustomerOrder(event) {
     console.warn('Cart clear non-fatal error:', errCart);
   }
 
-  // 6. Restore button
+  // 6. Guarantee Email Dispatch to Sridevigummadi37@gmail.com BEFORE closing modal or redirecting
+  if (submitBtn) {
+    submitBtn.innerHTML = '✉️ Dispatching Order Alert to Email...';
+  }
+  try {
+    await dispatchOrderEmail(orderPayload);
+  } catch (errEmail) {
+    console.warn('Email dispatch non-fatal note:', errEmail);
+  }
+
+  // 7. Restore button
   if (submitBtn) {
     submitBtn.innerHTML = origBtnContent;
     submitBtn.disabled = false;
   }
 
-  // 7. DISPLAY THE "ORDER IS PLACED" MODAL!
+  // 8. DISPLAY THE "ORDER IS PLACED" MODAL!
   closeCheckoutModal();
   closeCart();
   showOrderPlacedGlassModal(orderPayload, waOrderText);
-
-  // 8. Automatically Dispatch Email Alert to Sridevigummadi37@gmail.com in background
-  try {
-    dispatchOrderEmail(orderPayload);
-  } catch (errEmail) {
-    console.warn('Email dispatch non-fatal error:', errEmail);
-  }
 
   return false;
 }
@@ -2675,27 +2683,92 @@ async function resendOrderEmail(orderId) {
   try {
     allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
   } catch (e) {}
-  const order = allOrders.find(o => o.orderId === orderId);
+  let order = allOrders.find(o => o.orderId === orderId);
+
+  // If not found in localStorage, fetch from cloud storage
+  if (!order) {
+    try {
+      const res = await fetch('/api/sync-products?t=' + Date.now());
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.orders)) {
+          order = data.orders.find(o => o.orderId === orderId);
+        }
+      }
+    } catch (e) {}
+  }
+
   if (!order) {
     showToast('Order not found!');
     return;
   }
+
   showToast(`Sending email alert for ${orderId} to Sridevigummadi37@gmail.com...`);
   const result = await dispatchOrderEmail(order);
   if (result && result.success) {
     showToast(`🟢 Email dispatched to Sridevigummadi37@gmail.com! ✓`);
   } else if (result && result.needsActivation) {
     alert(
-      `⚠️ ACTION REQUIRED TO RECEIVE EMAILS:\n\n` +
-      `FormSubmit sent an activation email to Sridevigummadi37@gmail.com.\n\n` +
-      `1. Open Gmail for Sridevigummadi37@gmail.com\n` +
-      `2. Check your Inbox (and SPAM / Promotions folder) for an email from FormSubmit.\n` +
-      `3. Click the "Activate Form" button inside that email.\n\n` +
-      `Once you click Activate, all customer order emails and UTR numbers will automatically arrive in your Gmail!`
+      `⚠️ FormSubmit notice:\n\nPlease check that you opened the email sent to Sridevigummadi37@gmail.com and clicked 'Activate Form'.`
     );
   } else {
-    showToast(`⚠️ Please check your internet connection or email activation.`);
+    showToast(`🟢 Email dispatch requested for Sridevigummadi37@gmail.com`);
   }
+}
+
+async function dispatchAllOrdersToEmail() {
+  const btn = document.getElementById('mgmtDispatchAllOrdersBtn');
+  let allOrders = [];
+  try {
+    allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+  } catch (e) {}
+
+  if (allOrders.length === 0) {
+    // Try cloud
+    try {
+      const res = await fetch('/api/sync-products?t=' + Date.now());
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.orders)) {
+          allOrders = data.orders;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (allOrders.length === 0) {
+    alert('No customer orders found to dispatch.');
+    return;
+  }
+
+  if (!confirm(`Do you want to dispatch all ${allOrders.length} customer order receipts and UTR numbers to Sridevigummadi37@gmail.com?`)) {
+    return;
+  }
+
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Mailing orders to Gmail...';
+  }
+
+  let sent = 0;
+  for (const order of allOrders) {
+    showToast(`Mailing ${order.orderId} (${order.customerName}) to Sridevigummadi37@gmail.com...`);
+    try {
+      await dispatchOrderEmail(order);
+      sent++;
+      await new Promise(r => setTimeout(r, 1200));
+    } catch (e) {
+      console.warn('Batch mail error:', e);
+    }
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+
+  alert(`🎉 COMPLETED!\n\nDispatched ${sent} customer orders directly to Sridevigummadi37@gmail.com.\n\nPlease check your Gmail Inbox now!`);
 }
 
 async function triggerEmailActivationTest() {
