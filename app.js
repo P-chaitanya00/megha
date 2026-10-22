@@ -433,6 +433,49 @@ async function syncProductsToCloud(productsList) {
   return false;
 }
 
+// Single-order instant cloud sync (called when customer submits UTR number)
+async function syncSingleOrderToCloud(order) {
+  try {
+    const res = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_order', order: order })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success) {
+        console.log('✅ Order & UTR synced to cloud successfully:', order.orderId);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('Single order cloud sync attempt 1 failed:', err);
+  }
+
+  // Fallback: merge with full orders list
+  try {
+    let allOrders = [];
+    try {
+      allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+    } catch (e) {}
+    if (!allOrders.some(o => o.orderId === order.orderId)) {
+      allOrders.unshift(order);
+    }
+    const res2 = await fetch(CLOUD_SYNC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: allOrders })
+    });
+    if (res2.ok) {
+      console.log('✅ Orders synced to cloud via fallback merge.');
+      return true;
+    }
+  } catch (err2) {
+    console.error('Orders cloud sync fallback failed:', err2);
+  }
+  return false;
+}
+
 async function syncOrdersToCloud(ordersList) {
   try {
     const res = await fetch(CLOUD_SYNC_API, {
@@ -1904,8 +1947,7 @@ async function dispatchOrderEmail(order) {
 }
 
 // Order Submission & Verification
-// Order Submission & Verification
-function submitCustomerOrder(event) {
+async function submitCustomerOrder(event) {
   if (event) {
     try {
       if (typeof event.preventDefault === 'function') event.preventDefault();
@@ -1992,6 +2034,13 @@ function submitCustomerOrder(event) {
     return false;
   }
 
+  const submitBtn = document.getElementById('checkoutSubmitBtn');
+  const origBtnContent = submitBtn ? submitBtn.innerHTML : '<span>Verify Payment & Place Order</span>';
+  if (submitBtn) {
+    submitBtn.innerHTML = '<span>⏳ Saving Order & UTR to Portal...</span>';
+    submitBtn.disabled = true;
+  }
+
   // Calculate final shipping strictly via backend pincode checker
   const shippingInfo = calculateShippingFromPincode(pincode, state);
 
@@ -2072,21 +2121,31 @@ function submitCustomerOrder(event) {
     console.warn('WhatsApp text encoding warning:', errWa);
   }
 
-  // 1. FIRST: DISPLAY THE "ORDER IS PLACED" MODAL IMMEDIATELY!
-  closeCheckoutModal();
-  closeCart();
-  showOrderPlacedGlassModal(orderPayload, waOrderText);
-
-  // 2. Clear Cart and update UI safely
+  // 1. Persist Order in LocalStorage immediately
   try {
-    cart = [];
-    saveCart();
-    updateCartUI();
-  } catch (errCart) {
-    console.warn('Cart clear non-fatal error:', errCart);
+    let allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
+    allOrders.unshift(orderPayload);
+    localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
+    if (typeof updateMgmtOrdersCount === 'function') updateMgmtOrdersCount();
+  } catch (errStorage) {
+    console.warn('Storage warning for orders:', errStorage);
   }
 
-  // 3. Deduct Stock safely
+  // 2. CRITICAL: AWAIT Cloud Sync so Order & UTR are 100% written to cloud database BEFORE opening modal or leaving to WhatsApp!
+  try {
+    await syncSingleOrderToCloud(orderPayload);
+  } catch (errSync) {
+    console.warn('Order cloud sync note:', errSync);
+  }
+
+  // 3. Save Customer details for next checkout
+  try {
+    localStorage.setItem('gnapakalu_cust_details', JSON.stringify({
+      name, phone, houseNo, address, landmark, state, pincode
+    }));
+  } catch (e) {}
+
+  // 4. Deduct Stock safely
   try {
     orderedItemsBackup.forEach(cartItem => {
       const baseId = cartItem.productId || (typeof cartItem.id === 'string' ? cartItem.id.split('_')[0] : String(cartItem.id || ''));
@@ -2102,26 +2161,27 @@ function submitCustomerOrder(event) {
     console.warn('Stock update non-fatal error:', errStock);
   }
 
-  // 4. Save Customer details for next checkout
+  // 5. Clear Cart and update UI safely
   try {
-    localStorage.setItem('gnapakalu_cust_details', JSON.stringify({
-      name, phone, houseNo, address, landmark, state, pincode
-    }));
-  } catch (e) {}
-
-  // 5. Persist Order in LocalStorage & Instantly Sync to Cloud across all devices
-  try {
-    let allOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
-    allOrders.unshift(orderPayload);
-    localStorage.setItem('gnapakalu_customer_orders', JSON.stringify(allOrders));
-    if (typeof updateMgmtOrdersCount === 'function') updateMgmtOrdersCount();
-    // Real-time Cloud Sync for Orders so all other devices see this order immediately
-    syncOrdersToCloud(allOrders);
-  } catch (errStorage) {
-    console.warn('Storage warning for orders:', errStorage);
+    cart = [];
+    saveCart();
+    updateCartUI();
+  } catch (errCart) {
+    console.warn('Cart clear non-fatal error:', errCart);
   }
 
-  // 6. Automatically Dispatch Email Alert to Sridevigummadi37@gmail.com
+  // 6. Restore button
+  if (submitBtn) {
+    submitBtn.innerHTML = origBtnContent;
+    submitBtn.disabled = false;
+  }
+
+  // 7. DISPLAY THE "ORDER IS PLACED" MODAL!
+  closeCheckoutModal();
+  closeCart();
+  showOrderPlacedGlassModal(orderPayload, waOrderText);
+
+  // 8. Automatically Dispatch Email Alert to Sridevigummadi37@gmail.com in background
   try {
     dispatchOrderEmail(orderPayload);
   } catch (errEmail) {
@@ -2480,11 +2540,22 @@ function switchMgmtTab(tab) {
     if (ordersContent) ordersContent.style.display = 'block';
     if (ordersBtn) ordersBtn.classList.add('active');
     renderMgmtOrdersTable();
+    // Silently pull fresh orders from cloud so any new customer orders appear immediately
+    syncStoreFromCloud().then(() => renderMgmtOrdersTable());
   } else {
     if (listContent) listContent.style.display = 'block';
     if (listBtn) listBtn.classList.add('active');
     renderMgmtProductsTable();
   }
+}
+
+async function refreshLiveOrdersFromCloud() {
+  showToast('🔄 Fetching latest customer orders & UTRs from cloud...');
+  await syncStoreFromCloud(true);
+  renderMgmtOrdersTable();
+  let count = 0;
+  try { count = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]').length; } catch (e) {}
+  showToast(`🟢 Loaded ${count} live customer orders!`);
 }
 
 function updateMgmtOrdersCount() {

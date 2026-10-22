@@ -156,10 +156,35 @@ module.exports = async function handler(req, res) {
         };
       }
 
-      // 3. ORDERS UPDATE
-      if (Array.isArray(body.orders)) {
+      // 3. FAST SINGLE-ORDER OPERATION (Customer submits order + UTR)
+      if (body.action === 'add_order' && body.order) {
+        const gistData = await fetchGist();
+        const existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
+        const idx = existingOrders.findIndex(o => o.orderId === body.order.orderId);
+        if (idx !== -1) {
+          existingOrders[idx] = body.order;
+        } else {
+          existingOrders.unshift(body.order);
+        }
         filesToPatch[FILE_ORDERS] = {
-          content: JSON.stringify(body.orders)
+          content: JSON.stringify(existingOrders)
+        };
+      }
+      // MERGED FULL ORDERS ARRAY UPDATE (Fail-safe, never overwrites blindly)
+      else if (Array.isArray(body.orders)) {
+        const gistData = await fetchGist();
+        const existingOrders = (await loadGistFileContent(gistData.files && gistData.files[FILE_ORDERS])) || [];
+        const orderMap = new Map();
+        existingOrders.forEach(o => { if (o && o.orderId) orderMap.set(o.orderId, o); });
+        body.orders.forEach(o => { if (o && o.orderId) orderMap.set(o.orderId, o); });
+        const mergedList = Array.from(orderMap.values());
+        mergedList.sort((a, b) => {
+          const tA = new Date(a.orderDate).getTime() || 0;
+          const tB = new Date(b.orderDate).getTime() || 0;
+          return tB - tA;
+        });
+        filesToPatch[FILE_ORDERS] = {
+          content: JSON.stringify(mergedList)
         };
       }
 
