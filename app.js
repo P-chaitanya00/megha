@@ -170,6 +170,7 @@ function saveProductsLocalOnly() {
   renderProducts();
   renderDrawerCategories();
   renderSubcategoryFilterChips();
+  renderHomeCategories();
   updateMgmtLiveBadge();
   if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
     renderMgmtProductsTable();
@@ -298,6 +299,7 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         renderProducts();
         renderDrawerCategories();
         renderSubcategoryFilterChips();
+        renderHomeCategories();
         updateMgmtLiveBadge();
         if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
           renderMgmtProductsTable();
@@ -605,6 +607,7 @@ function formatINR(amount) {
 
 // INITIALIZATION
 async function initStore() {
+  renderHomeCategories();
   renderProducts();
   renderDrawerCategories();
   updateCartUI();
@@ -780,26 +783,21 @@ function openCollectionScreen(gender, title = 'Curated Collection') {
   syncStoreFromCloud();
 }
 
-// 3. NAVIGATE DIRECTLY TO A SPECIFIC CATEGORY SCREEN
+// 3. NAVIGATE DIRECTLY TO A SPECIFIC CATEGORY SCREEN (OPENS ONLY RELATED PRODUCTS)
 function openCategoryScreen(categoryName, customTitle) {
   currentScreen = 'catalog';
   activeCategoryFilter = categoryName;
 
-  // Infer gender based on category definition or products
-  const catDef = ALL_CATEGORIES.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-  const item = PRODUCTS.find(p => p.category.toLowerCase() === categoryName.toLowerCase());
-  if (catDef) {
-    activeGenderTab = catDef.gender === 'both' ? 'all' : catDef.gender;
-  } else if (item) {
-    activeGenderTab = item.gender;
-  } else {
-    activeGenderTab = 'all';
-  }
+  // Set gender to 'all' so every product matching this category is visible
+  activeGenderTab = 'all';
 
   document.getElementById('homeView').style.display = 'none';
   document.getElementById('catalogView').style.display = 'block';
 
   document.getElementById('navHomeTab')?.classList.remove('active');
+  document.getElementById('navWomenTab')?.classList.remove('active');
+  document.getElementById('navMenTab')?.classList.remove('active');
+
   document.getElementById('collectionBreadcrumb').textContent = 'Categories';
   document.getElementById('collectionHeading').textContent = customTitle || categoryName;
   document.getElementById('collectionDescription').textContent = `Explore our handcrafted creations in ${categoryName}.`;
@@ -808,7 +806,6 @@ function openCategoryScreen(categoryName, customTitle) {
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  syncStoreFromCloud();
 }
 
 // ===============================================================
@@ -827,18 +824,30 @@ function renderSubcategoryFilterChips() {
     })
     .map(c => c.name);
 
-  container.innerHTML = categories.map(cat => {
+  const allChip = `
+    <button class="subcat-chip ${activeCategoryFilter === 'all' ? 'active' : ''}" onclick="selectSubcategoryChip('all')">
+      All
+    </button>
+  `;
+
+  const catChips = categories.map(cat => {
     const isSelected = (cat.toLowerCase() === activeCategoryFilter.toLowerCase());
     return `
-      <button class="subcat-chip ${isSelected ? 'active' : ''}" onclick="selectSubcategoryChip('${cat}')">
+      <button class="subcat-chip ${isSelected ? 'active' : ''}" onclick="selectSubcategoryChip('${cat.replace(/'/g, "\\'")}')">
         ${cat}
       </button>
     `;
   }).join('');
+
+  container.innerHTML = allChip + catChips;
 }
 
 function selectSubcategoryChip(catKey) {
   activeCategoryFilter = catKey;
+  const heading = document.getElementById('collectionHeading');
+  if (heading) {
+    heading.textContent = (catKey === 'all') ? 'All Handcrafted Creations' : catKey;
+  }
   renderSubcategoryFilterChips();
   renderProducts();
 }
@@ -1099,6 +1108,138 @@ function renderDrawerCategories() {
 
 function handleDrawerCategoryClick(catKey) {
   openCategoryScreen(catKey, catKey);
+}
+
+// ===============================================================
+// SCREEN 1: DYNAMIC CATEGORIES SHOWCASE (ONE BY ONE + VIEW ALL)
+// ===============================================================
+function renderHomeCategories() {
+  const container = document.getElementById('homeCategoriesContainer');
+  if (!container) return;
+
+  const CATEGORY_DISPLAY_TITLES = {
+    'antitarnish jewellery': 'Anti-Tarnish Jewellery',
+    'traditional jewellery': 'Traditional Jewellery',
+    'handmade bangles': 'Handmade Silk Bangles',
+    'resin art': 'Preserved Resin Art',
+    'women hampers': "Women's Luxury Hampers",
+    'men hampers': "Men's Hampers & Chains",
+    'scented candles': 'Aromatic Scented Candles',
+    'paintings': 'Original Mini Paintings',
+    'scoop': 'Mystery Scoop Box',
+    'dice': 'Lucky Dice Game',
+    'special gifts': 'Special Keepsake Gifts'
+  };
+
+  const catList = [];
+  const seen = new Set();
+
+  ALL_CATEGORIES.forEach(c => {
+    const key = c.name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      catList.push({ name: c.name, gender: c.gender || 'both' });
+    }
+  });
+
+  if (Array.isArray(PRODUCTS)) {
+    PRODUCTS.forEach(p => {
+      if (p.category) {
+        const key = p.category.toLowerCase().trim();
+        if (!seen.has(key)) {
+          seen.add(key);
+          catList.push({ name: p.category, gender: p.gender || 'both' });
+        }
+      }
+    });
+  }
+
+  const cardsHtml = catList.map(cat => {
+    const key = cat.name.toLowerCase().trim();
+    const displayName = CATEGORY_DISPLAY_TITLES[key] || cat.name;
+
+    const catProds = (PRODUCTS || []).filter(p => p.category && p.category.toLowerCase().trim() === key);
+    const count = catProds.length;
+
+    let imgUrl = '';
+    const sampleProd = catProds.find(p => p.image);
+    if (sampleProd && sampleProd.image) {
+      imgUrl = sampleProd.image;
+    } else {
+      if (key.includes('anti') || key.includes('tarnish')) imgUrl = 'assets/products/golden_heart_necklace.jpg';
+      else if (key.includes('traditional')) imgUrl = 'assets/products/ruby_emerald_flora_bangle.jpg';
+      else if (key.includes('bangle')) imgUrl = 'assets/products/blood_resin_bangles.jpg';
+      else if (key.includes('resin')) imgUrl = 'assets/products/bamboo_bangle_white.jpg';
+      else if (key.includes('men')) imgUrl = 'assets/images/men_collection_banner.jpg';
+      else if (key.includes('hamper') || key.includes('women')) imgUrl = 'assets/products/tulip_adjustable_bracelet.jpg';
+      else if (key.includes('candle')) imgUrl = 'assets/products/tulip_pendant_pink.jpg';
+      else if (key.includes('paint')) imgUrl = 'assets/products/tulip_pendant_red.jpg';
+      else if (key.includes('scoop')) imgUrl = 'assets/products/bamboo_bangle_black.jpg';
+      else if (key.includes('dice')) imgUrl = 'assets/products/bamboo_bangle_gold.jpg';
+      else if (cat.gender === 'm') imgUrl = 'assets/images/men_collection_banner.jpg';
+      else imgUrl = 'assets/products/golden_heart_necklace.jpg';
+    }
+
+    let genderBadge = 'Atelier Collection';
+    if (cat.gender === 'w') genderBadge = "Women's Collection";
+    else if (cat.gender === 'm') genderBadge = "Men's Collection";
+    else if (cat.gender === 'both') genderBadge = 'Unisex & Keepsakes';
+
+    let priceText = '';
+    if (count > 0) {
+      const minPrice = Math.min(...catProds.map(p => p.offerPrice || 199));
+      priceText = `From ₹${minPrice} (${count} Item${count > 1 ? 's' : ''})`;
+    } else {
+      priceText = 'Handcrafted Atelier';
+    }
+
+    return `
+      <div class="focus-collection-strip" onclick="openCategoryScreen('${cat.name.replace(/'/g, "\\'")}', '${displayName.replace(/'/g, "\\'")}')">
+        <div class="strip-media">
+          <img src="${imgUrl}" alt="${displayName}" class="strip-img" loading="lazy">
+          <div class="strip-scrim"></div>
+        </div>
+        <div class="strip-content">
+          <div class="strip-info-left">
+            <span class="strip-badge">${genderBadge}</span>
+            <h2 class="strip-title">${displayName}</h2>
+          </div>
+          <div class="strip-info-right">
+            <span class="strip-price">${priceText}</span>
+            <span class="strip-btn">
+              <span>Explore</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const totalCount = (PRODUCTS || []).length;
+  const viewAllHtml = `
+    <div class="focus-collection-strip strip-view-all" onclick="openCollectionScreen('all', 'All Handcrafted Creations')">
+      <div class="strip-media">
+        <div class="strip-img" style="background: linear-gradient(135deg, #1e0a24 0%, #4a044e 50%, #831843 100%); width: 100%; height: 100%;"></div>
+        <div class="strip-scrim" style="background: linear-gradient(90deg, rgba(20,5,25,0.92) 0%, rgba(190,24,93,0.7) 50%, rgba(139,92,246,0.8) 100%);"></div>
+      </div>
+      <div class="strip-content">
+        <div class="strip-info-left">
+          <span class="strip-badge" style="background: #ffffff; color: var(--color-primary-dark); font-weight: 800;">Complete Store Catalog</span>
+          <h2 class="strip-title" style="color: #ffffff; font-weight: 800;">✨ View All Products</h2>
+        </div>
+        <div class="strip-info-right">
+          <span class="strip-price" style="color: #fdf2f8; font-weight: 700;">${totalCount} Items</span>
+          <span class="strip-btn" style="background: #ffffff; color: var(--color-primary-dark); font-weight: 800;">
+            <span>View All</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = cardsHtml + viewAllHtml;
 }
 
 // ===============================================================

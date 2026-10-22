@@ -572,6 +572,17 @@ a {
   opacity: 0.95;
 }
 
+.strip-view-all {
+  border: 1.5px solid rgba(244, 114, 182, 0.7);
+  box-shadow: 0 10px 30px rgba(225, 29, 72, 0.22);
+  margin-top: 0.25rem;
+}
+
+.strip-view-all:hover {
+  border-color: #f43f5e;
+  box-shadow: 0 14px 36px rgba(225, 29, 72, 0.38);
+}
+
 /* ===================================================================
    CURATED CATEGORIES (CONTINUOUS MARQUEE TICKER)
    =================================================================== */

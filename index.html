@@ -64,7 +64,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261022_categories">
   <!-- Immediate pre-render purge of legacy orders from before today -->
   <script>
     try {
@@ -159,47 +159,9 @@
 
 
 
-        <!-- Interactive Focus Showcase (Stacked Together, Auto-Minimizing) -->
-        <div class="luxe-focus-showcase">
-          <!-- Women Atelier Collection Banner -->
-          <div class="focus-collection-strip strip-women" onclick="openCollectionScreen('w', 'Women Collection')">
-            <div class="strip-media">
-              <img src="assets/products/golden_heart_necklace.jpg" alt="Women Atelier" class="strip-img" style="object-position: center;">
-              <div class="strip-scrim"></div>
-            </div>
-            <div class="strip-content">
-              <div class="strip-info-left">
-                <h2 class="strip-title">Women's Handcrafted Atelier</h2>
-              </div>
-              <div class="strip-info-right">
-                <span class="strip-price">From ₹199</span>
-                <span class="strip-btn">
-                  <span>Explore</span>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Men & Hampers Collection Banner -->
-          <div class="focus-collection-strip strip-men" onclick="openCollectionScreen('m', 'Men Collection')">
-            <div class="strip-media">
-              <img src="assets/images/men_collection_banner.jpg" alt="Men Collection" class="strip-img">
-              <div class="strip-scrim"></div>
-            </div>
-            <div class="strip-content">
-              <div class="strip-info-left">
-                <h2 class="strip-title">Men's Hampers & Chains</h2>
-              </div>
-              <div class="strip-info-right">
-                <span class="strip-price">From ₹599</span>
-                <span class="strip-btn">
-                  <span>Explore</span>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </span>
-              </div>
-            </div>
-          </div>
+        <!-- All Store Categories (Women & Men, One by One + View All Option) -->
+        <div class="luxe-focus-showcase" id="homeCategoriesContainer">
+          <!-- Populated dynamically via renderHomeCategories() -->
         </div>
 
         <!-- Horizontal Interactive Story Capsules (Continuous Marquee Ticker) -->
@@ -1144,6 +1106,6 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript Engine -->
-  <script src="app.js?v=20261022_final_purged"></script>
+  <script src="app.js?v=20261022_categories"></script>
 </body>
 </html>
