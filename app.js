@@ -292,23 +292,31 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         }
       }
 
-      // --- B. SYNC & MERGE CUSTOMER ORDERS ---
+      // --- B. SYNC & MERGE CUSTOMER ORDERS (Cloud Authority) ---
+      const cloudOrders = Array.isArray(cloudData.orders) ? cloudData.orders : [];
+
       let localOrders = [];
       try {
         localOrders = JSON.parse(localStorage.getItem('gnapakalu_customer_orders') || '[]');
       } catch (e) { localOrders = []; }
 
-      const cloudOrders = Array.isArray(cloudData.orders) ? cloudData.orders : [];
-      
-      // Merge unique orders by orderId (keep most recent orders first)
+      // Authoritative cloud-first sync: adopt cloudOrders
       const orderMap = new Map();
-      // Add local orders first (preserving laptop's 4 existing orders)
-      localOrders.forEach(ord => {
-        if (ord && ord.orderId) orderMap.set(ord.orderId, ord);
-      });
-      // Add or update with cloud orders
       cloudOrders.forEach(ord => {
         if (ord && ord.orderId) orderMap.set(ord.orderId, ord);
+      });
+
+      // Retain local orders ONLY if placed today and not yet in cloud
+      localOrders.forEach(ord => {
+        if (ord && ord.orderId && !orderMap.has(ord.orderId)) {
+          const dateStr = String(ord.orderDate || '').toLowerCase();
+          const isToday = dateStr.includes('22 oct 2026') || dateStr.includes('22/10/2026') || dateStr.includes('2026-10-22');
+          if (isToday) {
+            orderMap.set(ord.orderId, ord);
+            // Auto-persist new local order from today to cloud
+            syncSingleOrderToCloud(ord);
+          }
+        }
       });
 
       const mergedOrders = Array.from(orderMap.values());
@@ -326,12 +334,6 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         if (ordersTab && ordersTab.style.display !== 'none' && typeof renderMgmtOrdersTable === 'function') {
           renderMgmtOrdersTable();
         }
-      }
-
-      // If local orders had orders not yet in the cloud, push merged list back to cloud
-      if (mergedOrders.length > cloudOrders.length) {
-        console.log(`Pushing ${mergedOrders.length - cloudOrders.length} local un-synced orders to cloud...`);
-        syncOrdersToCloud(mergedOrders);
       }
 
       // --- C. SYNC OWNER ACCESS PIN ---
