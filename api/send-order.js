@@ -72,17 +72,23 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify(emailPayload)
     });
 
-    const formSubmitData = await formSubmitResponse.json();
+    const rawText = await formSubmitResponse.text();
+    let formSubmitData = null;
+    try {
+      formSubmitData = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.warn('FormSubmit returned non-JSON:', rawText.substring(0, 200));
+    }
+
     const isSuccess = formSubmitData && (formSubmitData.success === 'true' || formSubmitData.success === true);
     const needsActivation = formSubmitData && typeof formSubmitData.message === 'string' && formSubmitData.message.includes('Activation');
 
     return res.status(200).json({
       success: isSuccess,
       needsActivation: needsActivation,
-      message: formSubmitData.message || (isSuccess ? 'Order email dispatched successfully' : 'Failed to send email'),
+      message: formSubmitData ? formSubmitData.message : 'Dispatched',
       orderId: order.orderId,
-      recipient: targetEmail,
-      providerResponse: formSubmitData
+      recipient: targetEmail
     });
   } catch (error) {
     console.error('Order email dispatch error:', error);

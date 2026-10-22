@@ -1827,78 +1827,80 @@ function selectPaymentApp(appName, cardId) {
   }
 }
 
-// Dispatches order details to Sridevigummadi37@gmail.com via Backend Serverless & FormSubmit API
+// Dispatches order details to Sridevigummadi37@gmail.com via Direct Browser AJAX & Serverless API
 async function dispatchOrderEmail(order) {
   const targetEmail = 'Sridevigummadi37@gmail.com';
-  
-  // 1. Try Vercel Serverless Backend Endpoint /api/send-order
-  try {
-    const res = await fetch('/api/send-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        console.log('Order notification successfully dispatched to', targetEmail);
-        return { success: true };
-      }
-      if (data.needsActivation) {
-        console.warn('FormSubmit needs activation on', targetEmail);
-        return { success: false, needsActivation: true, message: data.message };
-      }
-    }
-  } catch (err) {
-    console.warn('Backend serverless endpoint fallback to direct FormSubmit:', err);
-  }
+  const itemsList = Array.isArray(order.items)
+    ? order.items.map(i => `${i.name} (${i.selectedVariant || i.category || 'Standard'}) x ${i.qty} = ₹${i.total}`).join('\n')
+    : String(order.items || '');
 
-  // 2. Direct Resilient Fallback to FormSubmit AJAX endpoint
-  try {
-    const itemsList = Array.isArray(order.items)
-      ? order.items.map(i => `${i.name} (${i.selectedVariant || i.category || 'Standard'}) x ${i.qty} = ₹${i.total}`).join('\n')
-      : String(order.items || '');
+  const payload = {
+    _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + (order.grandTotal || 0)}`,
+    _template: 'table',
+    _captcha: 'false',
+    Store: 'Gnapakalu by Megha',
+    Order_ID: order.orderId,
+    Order_Date_Time: order.orderDate,
+    Payment_App_Used: order.paymentApp,
+    Payment_UTR_Number: order.utrNumber || 'N/A',
+    Transaction_ID: order.transactionId || 'N/A',
+    Payment_Status: order.paymentStatus,
+    Customer_Name: order.customerName,
+    Mobile_Number: order.customerPhone,
+    House_Number: order.houseNo,
+    Street_Area_Address: order.address,
+    Landmark: order.landmark,
+    State: order.state,
+    Pincode: order.pincode,
+    Ordered_Items: itemsList,
+    Bag_Subtotal: order.subtotalFormatted || '₹' + (order.subtotal || 0),
+    Promotional_Discount: order.discountFormatted || '₹' + (order.discount || 0),
+    Courier_Zone_and_Charge: `${order.shippingZone} (${order.courierChargeFormatted || '₹' + (order.courierCharge || 0)})`,
+    TOTAL_AMOUNT_PAID: order.grandTotalFormatted || '₹' + (order.grandTotal || 0)
+  };
 
-    const fallbackRes = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+  // 1. Primary: Direct Client-Side FormSubmit (Permitted by Cloudflare, direct from visitor browser)
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        _subject: `✨ New Live Order ${order.orderId} from ${order.customerName} - Total: ${order.grandTotalFormatted || '₹' + (order.grandTotal || 0)}`,
-        _template: 'table',
-        _captcha: 'false',
-        Store: 'Gnapakalu by Megha',
-        Order_ID: order.orderId,
-        Order_Date_Time: order.orderDate,
-        Payment_App_Used: order.paymentApp,
-        Payment_UTR_Number: order.utrNumber || 'N/A',
-        Transaction_ID: order.transactionId || 'N/A',
-        Payment_Status: order.paymentStatus,
-        Customer_Name: order.customerName,
-        Mobile_Number: order.customerPhone,
-        House_Number: order.houseNo,
-        Street_Area_Address: order.address,
-        Landmark: order.landmark,
-        State: order.state,
-        Pincode: order.pincode,
-        Ordered_Items: itemsList,
-        Bag_Subtotal: order.subtotalFormatted || '₹' + (order.subtotal || 0),
-        Promotional_Discount: order.discountFormatted || '₹' + (order.discount || 0),
-        Courier_Zone_and_Charge: `${order.shippingZone} (${order.courierChargeFormatted || '₹' + (order.courierCharge || 0)})`,
-        TOTAL_AMOUNT_PAID: order.grandTotalFormatted || '₹' + (order.grandTotal || 0)
-      })
+      body: JSON.stringify(payload)
     });
-    const resJson = await fallbackRes.json();
-    const isSuccess = resJson && (resJson.success === 'true' || resJson.success === true);
-    const needsActivation = resJson && typeof resJson.message === 'string' && resJson.message.includes('Activation');
-    console.log('Order email dispatched to', targetEmail, resJson);
-    return { success: isSuccess, needsActivation: needsActivation, message: resJson.message };
-  } catch (e) {
-    console.error('Email dispatch error:', e);
-    return { success: false, error: e.message };
+    const data = await res.json();
+    const isSuccess = data && (data.success === 'true' || data.success === true);
+    const needsActivation = data && typeof data.message === 'string' && data.message.includes('Activation');
+
+    if (isSuccess) {
+      console.log('Order email dispatched to', targetEmail);
+      return { success: true };
+    }
+    if (needsActivation) {
+      console.warn('FormSubmit needs activation on', targetEmail);
+      return { success: false, needsActivation: true, message: data.message };
+    }
+  } catch (errClient) {
+    console.warn('Client-side email dispatch fallback to serverless:', errClient);
   }
+
+  // 2. Secondary: Backend Serverless Endpoint /api/send-order
+  try {
+    const resServer = await fetch('/api/send-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+    if (resServer.ok) {
+      const sData = await resServer.json();
+      return sData;
+    }
+  } catch (errServer) {
+    console.warn('Backend serverless email dispatch error:', errServer);
+  }
+
+  return { success: false };
 }
 
 // Order Submission & Verification
