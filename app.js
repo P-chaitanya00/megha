@@ -1180,10 +1180,7 @@ function renderHomeCategories() {
       else imgUrl = 'assets/products/golden_heart_necklace.jpg';
     }
 
-    let genderBadge = 'Atelier Collection';
-    if (cat.gender === 'w') genderBadge = "Women's Collection";
-    else if (cat.gender === 'm') genderBadge = "Men's Collection";
-    else if (cat.gender === 'both') genderBadge = 'Unisex & Keepsakes';
+
 
     let priceText = '';
     if (count > 0) {
@@ -1201,7 +1198,6 @@ function renderHomeCategories() {
         </div>
         <div class="strip-content">
           <div class="strip-info-left">
-            <span class="strip-badge">${genderBadge}</span>
             <h2 class="strip-title">${displayName}</h2>
           </div>
           <div class="strip-info-right">
