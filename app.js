@@ -3193,6 +3193,10 @@ async function handleMgmtFormSubmit(e) {
     if (!ALL_CATEGORIES.some(c => c.name.toLowerCase() === category.toLowerCase())) {
       ALL_CATEGORIES.push({ name: category, gender: gender });
     }
+    // Also add to CATEGORY_GRID_META so it shows on home page grid
+    if (!CATEGORY_GRID_META.some(c => c.name.toLowerCase() === category.toLowerCase())) {
+      CATEGORY_GRID_META.push({ name: category, icon: '🛍️', label: category });
+    }
   }
 
   const offerPrice = parseInt(document.getElementById('mgmtProdOfferPrice').value, 10);
@@ -3277,6 +3281,7 @@ async function handleMgmtFormSubmit(e) {
 
   cancelProductEditing();
   switchMgmtTab('list');
+  renderHomeCategories(); // Refresh home grid so new category is visible immediately
 
   if (cloudSuccess) {
     showToast(`🟢 Product "${name}" is now LIVE across all devices!`);
