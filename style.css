@@ -4013,4 +4013,99 @@ a {
 }
 
 
+/* ===================================================================
+   CATEGORY QUICK-SELECT GRID (14 clickable boxes on catalog screen)
+   =================================================================== */
+.category-quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.cat-quick-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.65rem 0.7rem;
+  min-width: 90px;
+  flex: 1 1 calc(14.28% - 0.6rem); /* 7 per row on wide screens */
+  max-width: 130px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid var(--color-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px var(--color-shadow);
+  text-align: center;
+}
+
+.cat-quick-box:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.2);
+}
+
+.cat-quick-box.active {
+  background: var(--gradient-luxe);
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.35);
+  transform: translateY(-2px);
+}
+
+.cat-quick-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.cat-quick-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  line-height: 1.25;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.cat-quick-box.active .cat-quick-label {
+  color: #ffffff;
+}
+
+@media (max-width: 1024px) {
+  .cat-quick-box {
+    flex: 1 1 calc(20% - 0.6rem); /* 5 per row */
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cat-quick-box {
+    flex: 1 1 calc(25% - 0.6rem); /* 4 per row */
+    max-width: 110px;
+    min-width: 72px;
+  }
+  .cat-quick-icon {
+    font-size: 1.15rem;
+  }
+  .cat-quick-label {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cat-quick-box {
+    flex: 1 1 calc(33.33% - 0.6rem); /* 3 per row on small phones */
+    min-width: 68px;
+    padding: 0.55rem 0.45rem;
+  }
+  .cat-quick-icon {
+    font-size: 1.05rem;
+  }
+  .cat-quick-label {
+    font-size: 0.6rem;
+  }
+}
 

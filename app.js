@@ -38,17 +38,19 @@
 // MASTER CATEGORIES LIST (Always available across menu, drawer and filter chips):
 const ALL_CATEGORIES = [
   { name: 'Antitarnish jewellery', gender: 'both' },
-  { name: 'Traditional jewellery', gender: 'w' },
-  { name: 'Resin art', gender: 'both' },
-  { name: 'Paintings', gender: 'both' },
-  { name: 'Handmade bangles', gender: 'w' },
-  { name: 'Scented candles', gender: 'both' },
-  { name: 'Scoop', gender: 'w' },
-  { name: 'Dice', gender: 'w' },
+  { name: 'Women jewellery box', gender: 'w' },
   { name: 'Women hampers', gender: 'w' },
   { name: 'Men hampers', gender: 'm' },
+  { name: 'Traditional jewellery', gender: 'w' },
+  { name: 'Scoop', gender: 'both' },
+  { name: 'Dice', gender: 'both' },
   { name: 'Special gifts', gender: 'both' },
-  { name: 'New launches', gender: 'both' }
+  { name: 'Handmade bangles', gender: 'w' },
+  { name: 'Handmade jewellery', gender: 'both' },
+  { name: 'Resin art', gender: 'both' },
+  { name: 'Paintings', gender: 'both' },
+  { name: 'Scented candles', gender: 'both' },
+  { name: 'Clay charms', gender: 'both' }
 ];
 
 const DEFAULT_PRODUCTS = [
@@ -777,6 +779,7 @@ function openCollectionScreen(gender, title = 'Curated Collection') {
     : 'Explore all handcrafted jewellery, custom resin art, paintings, candles and hampers.';
 
   renderSubcategoryFilterChips();
+  renderCategoryQuickGrid();
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -803,8 +806,55 @@ function openCategoryScreen(categoryName, customTitle) {
   document.getElementById('collectionDescription').textContent = `Explore our handcrafted creations in ${categoryName}.`;
 
   renderSubcategoryFilterChips();
+  renderCategoryQuickGrid();
   renderProducts();
   closeSidebarDrawer();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===============================================================
+// CATEGORY QUICK-SELECT GRID (14 boxes below the heading)
+// ===============================================================
+const CATEGORY_GRID_META = [
+  { name: 'Antitarnish jewellery', icon: '✨', label: 'Anti-Tarnish Jewellery' },
+  { name: 'Women jewellery box', icon: '💍', label: 'Women Jewellery Box' },
+  { name: 'Women hampers', icon: '🎀', label: 'Women Hampers' },
+  { name: 'Men hampers', icon: '🎁', label: 'Men Hampers & Accessories' },
+  { name: 'Traditional jewellery', icon: '👑', label: 'Traditional Jewellery' },
+  { name: 'Scoop', icon: '🍡', label: 'Scoop Game' },
+  { name: 'Dice', icon: '🎲', label: 'Dice Game' },
+  { name: 'Special gifts', icon: '💝', label: 'Special Gifts' },
+  { name: 'Handmade bangles', icon: '💫', label: 'Handmade Bangles' },
+  { name: 'Handmade jewellery', icon: '🌟', label: 'Handmade Jewellery' },
+  { name: 'Resin art', icon: '🌸', label: 'Resin Art' },
+  { name: 'Paintings', icon: '🎨', label: 'Paintings' },
+  { name: 'Scented candles', icon: '🕯️', label: 'Scented Candles' },
+  { name: 'Clay charms', icon: '🌼', label: 'Clay Charms' }
+];
+
+function renderCategoryQuickGrid() {
+  const container = document.getElementById('categoryQuickGrid');
+  if (!container) return;
+
+  container.innerHTML = CATEGORY_GRID_META.map(cat => {
+    const isActive = activeCategoryFilter.toLowerCase() === cat.name.toLowerCase();
+    return `
+      <button class="cat-quick-box ${isActive ? 'active' : ''}" onclick="selectQuickCategory('${cat.name.replace(/'/g, "\\'")}')">
+        <span class="cat-quick-icon">${cat.icon}</span>
+        <span class="cat-quick-label">${cat.label}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function selectQuickCategory(categoryName) {
+  activeCategoryFilter = categoryName;
+  const meta = CATEGORY_GRID_META.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+  const heading = document.getElementById('collectionHeading');
+  if (heading) heading.textContent = meta ? meta.label : categoryName;
+  renderCategoryQuickGrid();
+  renderSubcategoryFilterChips();
+  renderProducts();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
