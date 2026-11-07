@@ -779,7 +779,6 @@ function openCollectionScreen(gender, title = 'Curated Collection') {
     : 'Explore all handcrafted jewellery, custom resin art, paintings, candles and hampers.';
 
   renderSubcategoryFilterChips();
-  renderCategoryQuickGrid();
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -806,7 +805,6 @@ function openCategoryScreen(categoryName, customTitle) {
   document.getElementById('collectionDescription').textContent = `Explore our handcrafted creations in ${categoryName}.`;
 
   renderSubcategoryFilterChips();
-  renderCategoryQuickGrid();
   renderProducts();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -848,14 +846,9 @@ function renderCategoryQuickGrid() {
 }
 
 function selectQuickCategory(categoryName) {
-  activeCategoryFilter = categoryName;
   const meta = CATEGORY_GRID_META.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-  const heading = document.getElementById('collectionHeading');
-  if (heading) heading.textContent = meta ? meta.label : categoryName;
-  renderCategoryQuickGrid();
-  renderSubcategoryFilterChips();
-  renderProducts();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const displayTitle = meta ? meta.label : categoryName;
+  openCategoryScreen(categoryName, displayTitle);
 }
 
 // ===============================================================
@@ -1286,6 +1279,7 @@ function renderHomeCategories() {
   `;
 
   container.innerHTML = cardsHtml + viewAllHtml;
+  renderCategoryQuickGrid();
 }
 
 // ===============================================================
