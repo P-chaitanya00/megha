@@ -35,23 +35,197 @@
 // W (Women hampers)         -> w (women)
 // M (Men hampers)           -> m (men)
 
-// MASTER CATEGORIES LIST (Always available across menu, drawer and filter chips):
+// MASTER 14 CATEGORIES LIST (Synchronized across Home, Grid, Drawer, Filter Chips & Management Portal):
 const ALL_CATEGORIES = [
-  { name: 'Antitarnish jewellery', gender: 'both' },
-  { name: 'Women jewellery box', gender: 'w' },
-  { name: 'Women hampers', gender: 'w' },
-  { name: 'Men hampers', gender: 'm' },
-  { name: 'Traditional jewellery', gender: 'w' },
-  { name: 'Scoop', gender: 'both' },
-  { name: 'Dice', gender: 'both' },
-  { name: 'Special gifts', gender: 'both' },
-  { name: 'Handmade bangles', gender: 'w' },
-  { name: 'Handmade jewellery', gender: 'both' },
-  { name: 'Resin art', gender: 'both' },
-  { name: 'Paintings', gender: 'both' },
-  { name: 'Scented candles', gender: 'both' },
-  { name: 'Clay charms', gender: 'both' }
+  {
+    name: 'Antitarnish jewellery',
+    label: 'Anti-Tarnish Jewellery',
+    icon: '✨',
+    gender: 'both',
+    aliases: ['antitarnish jewellery', 'anti-tarnish jewellery', 'anti tarnish jewellery', 'antitarnish jewelry', 'anti-tarnish jewelry', 'antitarnish']
+  },
+  {
+    name: 'Women jewellery box',
+    label: 'Women Jewellery Box',
+    icon: '💍',
+    gender: 'w',
+    aliases: ['women jewellery box', 'women jewelry box', 'jewellery box', 'jewelry box', 'mini jewellery box']
+  },
+  {
+    name: 'Women hampers',
+    label: 'Women Hampers',
+    icon: '🎀',
+    gender: 'w',
+    aliases: ['women hampers', "women's hampers", 'women hamper', 'luxury hampers']
+  },
+  {
+    name: 'Men hampers and accessories',
+    label: 'Men Hampers & Accessories',
+    icon: '🎁',
+    gender: 'm',
+    aliases: ['men hampers', 'men hampers and accessories', 'men hampers & accessories', "men's hampers and accessories", "men's hampers & accessories", "men's hampers", 'men hamper', 'men accessories']
+  },
+  {
+    name: 'Traditional jewellery',
+    label: 'Traditional Jewellery',
+    icon: '👑',
+    gender: 'w',
+    aliases: ['traditional jewellery', 'traditional jewelry', 'kundan', 'temple jewellery']
+  },
+  {
+    name: 'Scoop game',
+    label: 'Scoop Game',
+    icon: '🍡',
+    gender: 'both',
+    aliases: ['scoop game', 'scoop', 'mystery scoop', 'scoop box', 'scoops']
+  },
+  {
+    name: 'Dice game',
+    label: 'Dice Game',
+    icon: '🎲',
+    gender: 'both',
+    aliases: ['dice game', 'dice', 'lucky dice', 'dice roll']
+  },
+  {
+    name: 'Special gifts',
+    label: 'Special Gifts',
+    icon: '💝',
+    gender: 'both',
+    aliases: ['special gifts', 'special gift', 'keepsake', 'keepsake gifts']
+  },
+  {
+    name: 'Handmade bangles',
+    label: 'Handmade Bangles',
+    icon: '💫',
+    gender: 'w',
+    aliases: ['handmade bangles', 'silk bangles', 'thread bangles', 'handmade bangle']
+  },
+  {
+    name: 'Handmade jewellery',
+    label: 'Handmade Jewellery',
+    icon: '🌟',
+    gender: 'both',
+    aliases: ['handmade jewellery', 'handmade jewelry']
+  },
+  {
+    name: 'Resin art',
+    label: 'Resin Art',
+    icon: '🌸',
+    gender: 'both',
+    aliases: ['resin art', 'resin', 'artisan resin']
+  },
+  {
+    name: 'Paintings',
+    label: 'Paintings',
+    icon: '🎨',
+    gender: 'both',
+    aliases: ['paintings', 'painting', 'mini paintings']
+  },
+  {
+    name: 'Scented candles',
+    label: 'Scented Candles',
+    icon: '🕯️',
+    gender: 'both',
+    aliases: ['scented candles', 'scented candle', 'candles', 'candle']
+  },
+  {
+    name: 'Clay charms',
+    label: 'Clay Charms',
+    icon: '🌼',
+    gender: 'both',
+    aliases: ['clay charms', 'clay charm', 'charms', 'charm']
+  }
 ];
+
+// Helper: Normalize category string into an alphanumeric lowercase slug
+function normalizeCategorySlug(str) {
+  if (!str) return '';
+  return String(str).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+}
+
+// Universal Robust Category Matcher: connects customer views with owner categories & legacy aliases
+function matchesCategory(productCategory, targetCategory) {
+  if (!productCategory || !targetCategory) return false;
+  if (targetCategory === 'all' || productCategory === 'all') return true;
+
+  const pRaw = String(productCategory).trim().toLowerCase();
+  const tRaw = String(targetCategory).trim().toLowerCase();
+  if (pRaw === tRaw) return true;
+
+  const pSlug = normalizeCategorySlug(pRaw);
+  const tSlug = normalizeCategorySlug(tRaw);
+  if (pSlug === tSlug) return true;
+
+  // Resolve target category definition
+  const targetDef = ALL_CATEGORIES.find(c => {
+    if (normalizeCategorySlug(c.name) === tSlug) return true;
+    if (c.label && normalizeCategorySlug(c.label) === tSlug) return true;
+    if (Array.isArray(c.aliases) && c.aliases.some(a => normalizeCategorySlug(a) === tSlug)) return true;
+    return false;
+  });
+
+  // Resolve product category definition
+  const productDef = ALL_CATEGORIES.find(c => {
+    if (normalizeCategorySlug(c.name) === pSlug) return true;
+    if (c.label && normalizeCategorySlug(c.label) === pSlug) return true;
+    if (Array.isArray(c.aliases) && c.aliases.some(a => normalizeCategorySlug(a) === pSlug)) return true;
+    return false;
+  });
+
+  // If both resolved to the same definition, they match!
+  if (targetDef && productDef && targetDef.name === productDef.name) {
+    return true;
+  }
+
+  // If targetDef resolved, check against product slug
+  if (targetDef) {
+    if (normalizeCategorySlug(targetDef.name) === pSlug) return true;
+    if (targetDef.label && normalizeCategorySlug(targetDef.label) === pSlug) return true;
+    if (Array.isArray(targetDef.aliases) && targetDef.aliases.some(a => normalizeCategorySlug(a) === pSlug)) return true;
+  }
+
+  // If productDef resolved, check against target slug
+  if (productDef) {
+    if (normalizeCategorySlug(productDef.name) === tSlug) return true;
+    if (productDef.label && normalizeCategorySlug(productDef.label) === tSlug) return true;
+    if (Array.isArray(productDef.aliases) && productDef.aliases.some(a => normalizeCategorySlug(a) === tSlug)) return true;
+  }
+
+  // Guarded substring matching for compound phrases
+  if (pSlug.length >= 3 && tSlug.length >= 3) {
+    // Avoid cross-gender match (women vs men)
+    const pHasWomen = pSlug.includes('women');
+    const tHasWomen = tSlug.includes('women');
+    if (pHasWomen !== tHasWomen) return false;
+
+    // Avoid false box vs hampers overlap
+    const pHasBox = pSlug.includes('box');
+    const tHasBox = tSlug.includes('box');
+    if (pHasBox !== tHasBox && (pSlug.includes('jewel') || tSlug.includes('jewel'))) return false;
+
+    if (pSlug.includes(tSlug) || tSlug.includes(pSlug)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Dynamically register any newly added custom categories to ALL_CATEGORIES
+function registerCategoryIfNew(catName, gender = 'both') {
+  if (!catName || String(catName).trim() === '' || String(catName).toLowerCase() === 'all') return;
+  const trimmed = String(catName).trim();
+  const existing = ALL_CATEGORIES.find(c => matchesCategory(c.name, trimmed));
+  if (!existing) {
+    ALL_CATEGORIES.push({
+      name: trimmed,
+      label: trimmed,
+      icon: '🛍️',
+      gender: gender || 'both',
+      aliases: [trimmed]
+    });
+  }
+}
 
 const DEFAULT_PRODUCTS = [
   {
@@ -173,6 +347,8 @@ function saveProductsLocalOnly() {
   renderDrawerCategories();
   renderSubcategoryFilterChips();
   renderHomeCategories();
+  renderCategoryQuickGrid();
+  populateMgmtCategories();
   updateMgmtLiveBadge();
   if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
     renderMgmtProductsTable();
@@ -274,8 +450,8 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         cloudData.products.forEach(p => {
           if (p && p.id) {
             if (typeof p.stock !== 'number' || isNaN(p.stock)) p.stock = 10;
-            if (p.category && !ALL_CATEGORIES.some(c => c.name.toLowerCase() === p.category.toLowerCase())) {
-              ALL_CATEGORIES.push({ name: p.category, gender: p.gender || 'both' });
+            if (p.category) {
+              registerCategoryIfNew(p.category, p.gender);
             }
             prodMap.set(p.id, p);
           }
@@ -285,6 +461,7 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         if (Array.isArray(PRODUCTS)) {
           PRODUCTS.forEach(p => {
             if (p && p.id && !prodMap.has(p.id)) {
+              if (p.category) registerCategoryIfNew(p.category, p.gender);
               prodMap.set(p.id, p);
             }
           });
@@ -302,6 +479,8 @@ async function syncStoreFromCloud(isUserInitiated = false) {
         renderDrawerCategories();
         renderSubcategoryFilterChips();
         renderHomeCategories();
+        renderCategoryQuickGrid();
+        populateMgmtCategories();
         updateMgmtLiveBadge();
         if (typeof isOwnerAuthenticated !== 'undefined' && isOwnerAuthenticated) {
           renderMgmtProductsTable();
@@ -609,9 +788,17 @@ function formatINR(amount) {
 
 // INITIALIZATION
 async function initStore() {
+  if (Array.isArray(PRODUCTS)) {
+    PRODUCTS.forEach(p => {
+      if (p && p.category) registerCategoryIfNew(p.category, p.gender);
+    });
+  }
   renderHomeCategories();
+  renderCategoryQuickGrid();
   renderProducts();
   renderDrawerCategories();
+  renderSubcategoryFilterChips();
+  populateMgmtCategories();
   updateCartUI();
   updateWishlistCount();
   updateMgmtLiveBadge();
@@ -800,12 +987,16 @@ function openCategoryScreen(categoryName, customTitle) {
   document.getElementById('navWomenTab')?.classList.remove('active');
   document.getElementById('navMenTab')?.classList.remove('active');
 
+  const meta = ALL_CATEGORIES.find(c => matchesCategory(c.name, categoryName));
+  const headingTitle = customTitle || (meta ? (meta.label || meta.name) : categoryName);
+
   document.getElementById('collectionBreadcrumb').textContent = 'Categories';
-  document.getElementById('collectionHeading').textContent = customTitle || categoryName;
-  document.getElementById('collectionDescription').textContent = `Explore our handcrafted creations in ${categoryName}.`;
+  document.getElementById('collectionHeading').textContent = headingTitle;
+  document.getElementById('collectionDescription').textContent = `Explore our handcrafted creations in ${headingTitle}.`;
 
   renderSubcategoryFilterChips();
   renderProducts();
+  renderCategoryQuickGrid();
   closeSidebarDrawer();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -813,42 +1004,25 @@ function openCategoryScreen(categoryName, customTitle) {
 // ===============================================================
 // CATEGORY QUICK-SELECT GRID (14 boxes below the heading)
 // ===============================================================
-const CATEGORY_GRID_META = [
-  { name: 'Antitarnish jewellery', icon: '✨', label: 'Anti-Tarnish Jewellery' },
-  { name: 'Women jewellery box', icon: '💍', label: 'Women Jewellery Box' },
-  { name: 'Women hampers', icon: '🎀', label: 'Women Hampers' },
-  { name: 'Men hampers', icon: '🎁', label: 'Men Hampers & Accessories' },
-  { name: 'Traditional jewellery', icon: '👑', label: 'Traditional Jewellery' },
-  { name: 'Scoop', icon: '🍡', label: 'Scoop Game' },
-  { name: 'Dice', icon: '🎲', label: 'Dice Game' },
-  { name: 'Special gifts', icon: '💝', label: 'Special Gifts' },
-  { name: 'Handmade bangles', icon: '💫', label: 'Handmade Bangles' },
-  { name: 'Handmade jewellery', icon: '🌟', label: 'Handmade Jewellery' },
-  { name: 'Resin art', icon: '🌸', label: 'Resin Art' },
-  { name: 'Paintings', icon: '🎨', label: 'Paintings' },
-  { name: 'Scented candles', icon: '🕯️', label: 'Scented Candles' },
-  { name: 'Clay charms', icon: '🌼', label: 'Clay Charms' }
-];
-
 function renderCategoryQuickGrid() {
   const container = document.getElementById('categoryQuickGrid');
   if (!container) return;
 
-  container.innerHTML = CATEGORY_GRID_META.map(cat => {
-    const isActive = activeCategoryFilter.toLowerCase() === cat.name.toLowerCase();
+  container.innerHTML = ALL_CATEGORIES.map(cat => {
+    const isActive = matchesCategory(cat.name, activeCategoryFilter);
     return `
       <button class="cat-quick-box ${isActive ? 'active' : ''}" onclick="selectQuickCategory('${cat.name.replace(/'/g, "\\'")}')">
-        <span class="cat-quick-icon">${cat.icon}</span>
-        <span class="cat-quick-label">${cat.label}</span>
+        <span class="cat-quick-icon">${cat.icon || '🛍️'}</span>
+        <span class="cat-quick-label">${cat.label || cat.name}</span>
       </button>
     `;
   }).join('');
 }
 
 function selectQuickCategory(categoryName) {
-  const meta = CATEGORY_GRID_META.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
-  const displayTitle = meta ? meta.label : categoryName;
-  openCategoryScreen(categoryName, displayTitle);
+  const meta = ALL_CATEGORIES.find(c => matchesCategory(c.name, categoryName));
+  const displayTitle = meta ? (meta.label || meta.name) : categoryName;
+  openCategoryScreen(meta ? meta.name : categoryName, displayTitle);
 }
 
 // ===============================================================
@@ -858,14 +1032,13 @@ function renderSubcategoryFilterChips() {
   const container = document.getElementById('subcategoriesFilterBar');
   if (!container) return;
 
-  // Show all categories mapped to the current gender tab
+  // Show categories mapped to current gender tab or all
   const categories = ALL_CATEGORIES
     .filter(c => {
       if (activeGenderTab === 'w') return c.gender === 'w' || c.gender === 'both';
       if (activeGenderTab === 'm') return c.gender === 'm' || c.gender === 'both';
       return true;
-    })
-    .map(c => c.name);
+    });
 
   const allChip = `
     <button class="subcat-chip ${activeCategoryFilter === 'all' ? 'active' : ''}" onclick="selectSubcategoryChip('all')">
@@ -874,10 +1047,10 @@ function renderSubcategoryFilterChips() {
   `;
 
   const catChips = categories.map(cat => {
-    const isSelected = (cat.toLowerCase() === activeCategoryFilter.toLowerCase());
+    const isSelected = matchesCategory(cat.name, activeCategoryFilter);
     return `
-      <button class="subcat-chip ${isSelected ? 'active' : ''}" onclick="selectSubcategoryChip('${cat.replace(/'/g, "\\'")}')">
-        ${cat}
+      <button class="subcat-chip ${isSelected ? 'active' : ''}" onclick="selectSubcategoryChip('${cat.name.replace(/'/g, "\\'")}')">
+        ${cat.label || cat.name}
       </button>
     `;
   }).join('');
@@ -889,10 +1062,16 @@ function selectSubcategoryChip(catKey) {
   activeCategoryFilter = catKey;
   const heading = document.getElementById('collectionHeading');
   if (heading) {
-    heading.textContent = (catKey === 'all') ? 'All Handcrafted Creations' : catKey;
+    if (catKey === 'all') {
+      heading.textContent = 'All Handcrafted Creations';
+    } else {
+      const meta = ALL_CATEGORIES.find(c => matchesCategory(c.name, catKey));
+      heading.textContent = meta ? (meta.label || meta.name) : catKey;
+    }
   }
   renderSubcategoryFilterChips();
   renderProducts();
+  renderCategoryQuickGrid();
 }
 
 // Customer-facing stock status resolver:
@@ -1017,28 +1196,34 @@ function renderProducts() {
   const countText = document.getElementById('catalogCountText');
   if (!container) return;
 
-  let list = PRODUCTS.filter(item => {
-    if (activeGenderTab === 'w') return item.gender === 'w' || item.gender === 'both';
-    if (activeGenderTab === 'm') return item.gender === 'm' || item.gender === 'both';
-    return true;
-  });
+  let list = Array.isArray(PRODUCTS) ? PRODUCTS.slice() : [];
 
-  if (activeCategoryFilter !== 'all') {
-    list = list.filter(item => item.category.toLowerCase() === activeCategoryFilter.toLowerCase());
+  // If viewing all collections without specific category filter, respect gender tab
+  if (activeCategoryFilter === 'all') {
+    if (activeGenderTab === 'w') {
+      list = list.filter(item => item && (item.gender === 'w' || item.gender === 'both'));
+    } else if (activeGenderTab === 'm') {
+      list = list.filter(item => item && (item.gender === 'm' || item.gender === 'both'));
+    }
+  } else {
+    // When a specific category is selected, filter strictly by that category across all products
+    list = list.filter(item => item && matchesCategory(item.category, activeCategoryFilter));
   }
 
   if (searchQuery) {
-    list = list.filter(item => 
-      item.name.toLowerCase().includes(searchQuery) ||
-      item.category.toLowerCase().includes(searchQuery) ||
-      (item.description && item.description.toLowerCase().includes(searchQuery))
-    );
+    list = list.filter(item => {
+      if (!item) return false;
+      const n = (item.name || '').toLowerCase();
+      const c = (item.category || '').toLowerCase();
+      const d = (item.description || '').toLowerCase();
+      return n.includes(searchQuery) || c.includes(searchQuery) || d.includes(searchQuery);
+    });
   }
 
   if (currentSort === 'price-low') {
-    list.sort((a, b) => a.offerPrice - b.offerPrice);
+    list.sort((a, b) => (a.offerPrice || 0) - (b.offerPrice || 0));
   } else if (currentSort === 'price-high') {
-    list.sort((a, b) => b.offerPrice - a.offerPrice);
+    list.sort((a, b) => (b.offerPrice || 0) - (a.offerPrice || 0));
   }
 
   if (countText) countText.textContent = `Showing ${list.length} Item(s)`;
@@ -1046,7 +1231,7 @@ function renderProducts() {
   if (list.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 3.5rem 1rem;">
-        <p style="font-size: 1.15rem; color: var(--color-text-muted);">No items found in this selection.</p>
+        <p style="font-size: 1.15rem; color: var(--color-text-muted);">No items found in this category.</p>
         <button onclick="openCollectionScreen('all', 'All Creations')" style="margin-top: 1rem;" class="checkout-btn">View All Items</button>
       </div>
     `;
@@ -1118,7 +1303,8 @@ function renderDrawerCategories() {
   const container = document.getElementById('drawerCategoryList');
   if (!container) return;
 
-  const relevantProducts = PRODUCTS.filter(p => {
+  const relevantProducts = (PRODUCTS || []).filter(p => {
+    if (!p) return false;
     if (drawerGenderTab === 'w') return p.gender === 'w' || p.gender === 'both';
     if (drawerGenderTab === 'm') return p.gender === 'm' || p.gender === 'both';
     return p.gender === 'w' || p.gender === 'both';
@@ -1130,18 +1316,17 @@ function renderDrawerCategories() {
       if (drawerGenderTab === 'w') return c.gender === 'w' || c.gender === 'both';
       if (drawerGenderTab === 'm') return c.gender === 'm' || c.gender === 'both';
       return true;
-    })
-    .map(c => c.name);
+    });
 
   container.innerHTML = categories.map(cat => {
-    const isSelected = (cat.toLowerCase() === activeCategoryFilter.toLowerCase());
-    const count = relevantProducts.filter(p => p.category.toLowerCase() === cat.toLowerCase()).length;
+    const isSelected = matchesCategory(cat.name, activeCategoryFilter);
+    const count = relevantProducts.filter(p => p && matchesCategory(p.category, cat.name)).length;
 
     return `
-      <li class="drawer-cat-item ${isSelected ? 'active' : ''}" onclick="handleDrawerCategoryClick('${cat}')">
+      <li class="drawer-cat-item ${isSelected ? 'active' : ''}" onclick="handleDrawerCategoryClick('${cat.name.replace(/'/g, "\\'")}')">
         <div style="display: flex; align-items: center;">
-          <span class="drawer-dot"></span>
-          <span>${cat}</span>
+          <span style="margin-right: 0.5rem; font-size: 1.1rem;">${cat.icon || '🛍️'}</span>
+          <span>${cat.label || cat.name}</span>
         </div>
         <span class="drawer-badge">${count}</span>
       </li>
@@ -1150,7 +1335,9 @@ function renderDrawerCategories() {
 }
 
 function handleDrawerCategoryClick(catKey) {
-  openCategoryScreen(catKey, catKey);
+  const meta = ALL_CATEGORIES.find(c => matchesCategory(c.name, catKey));
+  const displayTitle = meta ? (meta.label || meta.name) : catKey;
+  openCategoryScreen(catKey, displayTitle);
 }
 
 // ===============================================================
@@ -1160,48 +1347,9 @@ function renderHomeCategories() {
   const container = document.getElementById('homeCategoriesContainer');
   if (!container) return;
 
-  const CATEGORY_DISPLAY_TITLES = {
-    'antitarnish jewellery': 'Anti-Tarnish Jewellery',
-    'traditional jewellery': 'Traditional Jewellery',
-    'handmade bangles': 'Handmade Silk Bangles',
-    'resin art': 'Preserved Resin Art',
-    'women hampers': "Women's Luxury Hampers",
-    'men hampers': "Men's Hampers & Chains",
-    'scented candles': 'Aromatic Scented Candles',
-    'paintings': 'Original Mini Paintings',
-    'scoop': 'Mystery Scoop Box',
-    'dice': 'Lucky Dice Game',
-    'special gifts': 'Special Keepsake Gifts'
-  };
-
-  const catList = [];
-  const seen = new Set();
-
-  ALL_CATEGORIES.forEach(c => {
-    const key = c.name.toLowerCase().trim();
-    if (!seen.has(key)) {
-      seen.add(key);
-      catList.push({ name: c.name, gender: c.gender || 'both' });
-    }
-  });
-
-  if (Array.isArray(PRODUCTS)) {
-    PRODUCTS.forEach(p => {
-      if (p.category) {
-        const key = p.category.toLowerCase().trim();
-        if (!seen.has(key)) {
-          seen.add(key);
-          catList.push({ name: p.category, gender: p.gender || 'both' });
-        }
-      }
-    });
-  }
-
-  const cardsHtml = catList.map(cat => {
-    const key = cat.name.toLowerCase().trim();
-    const displayName = CATEGORY_DISPLAY_TITLES[key] || cat.name;
-
-    const catProds = (PRODUCTS || []).filter(p => p.category && p.category.toLowerCase().trim() === key);
+  const cardsHtml = ALL_CATEGORIES.map(cat => {
+    const displayName = cat.label || cat.name;
+    const catProds = (PRODUCTS || []).filter(p => p && matchesCategory(p.category, cat.name));
     const count = catProds.length;
 
     let imgUrl = '';
@@ -1209,21 +1357,22 @@ function renderHomeCategories() {
     if (sampleProd && sampleProd.image) {
       imgUrl = sampleProd.image;
     } else {
+      const key = (cat.name || '').toLowerCase();
       if (key.includes('anti') || key.includes('tarnish')) imgUrl = 'assets/products/golden_heart_necklace.jpg';
       else if (key.includes('traditional')) imgUrl = 'assets/products/ruby_emerald_flora_bangle.jpg';
       else if (key.includes('bangle')) imgUrl = 'assets/products/blood_resin_bangles.jpg';
       else if (key.includes('resin')) imgUrl = 'assets/products/bamboo_bangle_white.jpg';
       else if (key.includes('men')) imgUrl = 'assets/images/men_collection_banner.jpg';
+      else if (key.includes('box')) imgUrl = 'assets/products/tulip_adjustable_bracelet.jpg';
       else if (key.includes('hamper') || key.includes('women')) imgUrl = 'assets/products/tulip_adjustable_bracelet.jpg';
       else if (key.includes('candle')) imgUrl = 'assets/products/tulip_pendant_pink.jpg';
       else if (key.includes('paint')) imgUrl = 'assets/products/tulip_pendant_red.jpg';
       else if (key.includes('scoop')) imgUrl = 'assets/products/bamboo_bangle_black.jpg';
       else if (key.includes('dice')) imgUrl = 'assets/products/bamboo_bangle_gold.jpg';
+      else if (key.includes('charm')) imgUrl = 'assets/products/golden_heart_necklace.jpg';
       else if (cat.gender === 'm') imgUrl = 'assets/images/men_collection_banner.jpg';
       else imgUrl = 'assets/products/golden_heart_necklace.jpg';
     }
-
-
 
     let priceText = '';
     if (count > 0) {
@@ -2745,6 +2894,7 @@ function switchMgmtTab(tab) {
   if (tab === 'form') {
     if (formContent) formContent.style.display = 'block';
     if (formBtn) formBtn.classList.add('active');
+    populateMgmtCategories();
   } else if (tab === 'orders') {
     if (ordersContent) ordersContent.style.display = 'block';
     if (ordersBtn) ordersBtn.classList.add('active');
@@ -3053,9 +3203,14 @@ function populateMgmtCategories() {
   const select = document.getElementById('mgmtProdCategory');
   if (!select) return;
 
-  const catNames = [...new Set(ALL_CATEGORIES.map(c => c.name))];
-  select.innerHTML = catNames.map(c => `<option value="${c}">${c}</option>`).join('') +
-    `<option value="__custom__">+ Enter Custom Category...</option>`;
+  const currentVal = select.value;
+  select.innerHTML = ALL_CATEGORIES.map(c => `
+    <option value="${c.name}">${c.icon || '🛍️'} ${c.label || c.name}</option>
+  `).join('') + `<option value="__custom__">➕ + Enter Custom Category...</option>`;
+
+  if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+    select.value = currentVal;
+  }
 }
 
 function handleMgmtCategoryChange(val) {
@@ -3190,14 +3345,10 @@ async function handleMgmtFormSubmit(e) {
       return;
     }
     category = customVal;
-    if (!ALL_CATEGORIES.some(c => c.name.toLowerCase() === category.toLowerCase())) {
-      ALL_CATEGORIES.push({ name: category, gender: gender });
-    }
-    // Also add to CATEGORY_GRID_META so it shows on home page grid
-    if (!CATEGORY_GRID_META.some(c => c.name.toLowerCase() === category.toLowerCase())) {
-      CATEGORY_GRID_META.push({ name: category, icon: '🛍️', label: category });
-    }
   }
+
+  // Ensure category is registered across ALL_CATEGORIES and Quick Grid
+  registerCategoryIfNew(category, gender);
 
   const offerPrice = parseInt(document.getElementById('mgmtProdOfferPrice').value, 10);
   let originalPrice = parseInt(document.getElementById('mgmtProdOriginalPrice').value, 10);
@@ -3281,7 +3432,9 @@ async function handleMgmtFormSubmit(e) {
 
   cancelProductEditing();
   switchMgmtTab('list');
-  renderHomeCategories(); // Refresh home grid so new category is visible immediately
+  renderHomeCategories();
+  renderCategoryQuickGrid();
+  populateMgmtCategories();
 
   if (cloudSuccess) {
     showToast(`🟢 Product "${name}" is now LIVE across all devices!`);
@@ -3320,8 +3473,9 @@ function editProductInPortal(productId) {
   document.getElementById('mgmtProdGender').value = p.gender;
 
   const catSelect = document.getElementById('mgmtProdCategory');
-  if ([...catSelect.options].some(o => o.value === p.category)) {
-    catSelect.value = p.category;
+  const matchedOpt = [...catSelect.options].find(o => matchesCategory(o.value, p.category));
+  if (matchedOpt) {
+    catSelect.value = matchedOpt.value;
     document.getElementById('mgmtProdCustomCat').style.display = 'none';
   } else {
     catSelect.value = '__custom__';
