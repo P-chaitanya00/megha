@@ -65,6 +65,53 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css?v=20261022_categories">
+
+  <!-- Remove & Block "Powered by Netlify" Badge -->
+  <style>
+    #nl-badge-frame,
+    iframe[id="nl-badge-frame"],
+    iframe[title*="Netlify"],
+    iframe[srcdoc*="nl-badge"],
+    iframe[srcdoc*="Netlify"],
+    iframe[src*="netlify"],
+    .netlify-badge,
+    #netlify-hud,
+    [data-netlify-hud],
+    [class*="netlify-"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      max-width: 0 !important;
+      max-height: 0 !important;
+      position: absolute !important;
+      top: -9999px !important;
+      left: -9999px !important;
+      z-index: -9999 !important;
+    }
+  </style>
+  <script>
+    (function blockNetlifyBadge() {
+      function removeBadge() {
+        var frames = document.querySelectorAll('#nl-badge-frame, iframe[title*="Netlify"], iframe[id="nl-badge-frame"], iframe[srcdoc*="nl-badge"], [data-nf-variant]');
+        frames.forEach(function(el) {
+          try { el.remove(); } catch(e) {}
+        });
+      }
+      removeBadge();
+      if (typeof MutationObserver !== 'undefined' && document.documentElement) {
+        var observer = new MutationObserver(function() {
+          removeBadge();
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      }
+      document.addEventListener('DOMContentLoaded', removeBadge);
+      window.addEventListener('load', removeBadge);
+    })();
+  </script>
+
   <!-- Immediate pre-render purge of legacy orders from before today -->
   <script>
     try {

@@ -4109,3 +4109,31 @@ a {
   }
 }
 
+/* ===============================================================
+   ELIMINATE "POWERED BY NETLIFY" BADGE & HUD OVERLAY
+   =============================================================== */
+#nl-badge-frame,
+iframe[id="nl-badge-frame"],
+iframe[title*="Netlify"],
+iframe[srcdoc*="nl-badge"],
+iframe[srcdoc*="Netlify"],
+iframe[src*="netlify"],
+.netlify-badge,
+#netlify-hud,
+[data-netlify-hud],
+[class*="netlify-"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  z-index: -9999 !important;
+}
+
+

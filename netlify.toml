@@ -3,6 +3,12 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/.netlify/scripts/hud*"
+  to = "/assets/empty.js"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/sync-products"
   to = "/.netlify/functions/sync-products"
   status = 200
